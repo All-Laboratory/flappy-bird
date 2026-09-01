@@ -1,12 +1,14 @@
-﻿# 🐦 Flappy Bird Studio
+﻿# 🐦 Fly High
 
-A feature-rich, highly customizable modern HTML5 Canvas Flappy Bird game with interactive physics, live asset switching, custom character roster, audio effects, and fluid droplet trail physics.
+A feature-rich, highly customizable modern HTML5 Canvas game with interactive physics, live asset switching, custom character roster, audio effects, and fluid droplet trail physics.
 
 ## 🎮 Features
 
 - 👥 **Character Switching Roster**:
   - Hero Bird (ird.png)
   - Harish (harish.png)
+  - Sanjay (sanjay.png)
+  - San (san.png)
   - Classic Bird (🐥)
   - Custom Sprite Live Uploader
 - 🎚️ **Interactive Bird Size Slider**: Scale character from 0.8x to 2.6x.
@@ -17,7 +19,7 @@ A feature-rich, highly customizable modern HTML5 Canvas Flappy Bird game with in
   - Immediate audio cutoff on crash with sound exclusivity during Game Over.
 - ⚡ **Difficulty Presets & Physics Engine**: Easy, Classic, Hard presets and custom sliders.
 - 🌆 **Visual Atmosphere Themes**: Day, Sunset, Night, Neon.
-- ⛶ **Fullscreen Mode**: Dedicated fullscreen toggle.
+- 📱 **Full Screen Mobile View**: Edge-to-edge full mobile screen with floating top-right settings.
 
 ## 🚀 How to Run
 Open index.html in any browser.
