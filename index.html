@@ -2266,6 +2266,13 @@
           if (settingsOpen) closeSettings();
           return;
         }
+
+        // If typing in an input field or any modal is open, ignore game hotkeys
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag === 'input' || activeTag === 'textarea' || authModalOpen || leaderboardModalOpen || settingsOpen) {
+          return;
+        }
+
         if (e.code === 'Space' || e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
           e.preventDefault();
           handleAction();
