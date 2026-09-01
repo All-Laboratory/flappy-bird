@@ -227,7 +227,7 @@
               <span id="charStatusTag" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hero (Beanie)</span>
             </div>
 
-            <!-- Responsive Character Grid Cards -->
+            <!-- Responsive Character Grid Cards (2 cols) -->
             <div class="grid grid-cols-2 gap-2.5 mb-3">
               
               <!-- Option 1: Hero (Beanie) -->
@@ -263,7 +263,18 @@
                 </div>
               </button>
 
-              <!-- Option 4: Classic 🐥 -->
+              <!-- Option 4: San -->
+              <button data-char="san" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95">
+                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="san.png" alt="San" class="w-9 h-9 object-contain">
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-bold text-slate-200 truncate">San</div>
+                  <div class="text-[10px] text-slate-400 font-medium active-badge">Select</div>
+                </div>
+              </button>
+
+              <!-- Option 5: Classic 🐥 -->
               <button data-char="classic" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95">
                 <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-2xl flex-shrink-0">
                   🐥
@@ -274,19 +285,16 @@
                 </div>
               </button>
 
-              <!-- Option 5: Custom Upload (Full width) -->
-              <button data-char="custom" id="customCharCard" class="char-select-btn col-span-2 p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center justify-between gap-2.5 relative active:scale-95">
-                <div class="flex items-center gap-2.5 min-w-0">
-                  <div id="customAvatarBox" class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
-                    <img id="customCharThumb" src="" alt="Custom" class="w-9 h-9 object-contain hidden">
-                    <span id="customCharPlaceholder">➕</span>
-                  </div>
-                  <div class="min-w-0">
-                    <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom Upload</div>
-                    <div id="customCharSub" class="text-[10px] text-slate-400 font-medium">Add your own picture</div>
-                  </div>
+              <!-- Option 6: Custom Upload -->
+              <button data-char="custom" id="customCharCard" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95">
+                <div id="customAvatarBox" class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
+                  <img id="customCharThumb" src="" alt="Custom" class="w-9 h-9 object-contain hidden">
+                  <span id="customCharPlaceholder">➕</span>
                 </div>
-                <span class="text-[10px] text-slate-300 font-semibold active-badge bg-slate-700 px-3 py-1 rounded-lg">Upload</span>
+                <div class="min-w-0 flex-1">
+                  <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom...</div>
+                  <div id="customCharSub" class="text-[10px] text-slate-400 font-medium active-badge">Upload</div>
+                </div>
               </button>
 
             </div>
@@ -788,6 +796,9 @@
       const sanjayImg = new Image();
       sanjayImg.src = 'sanjay.png';
 
+      const sanImg = new Image();
+      sanImg.src = 'san.png';
+
       let customUploadedImg = null;
       let activeCharKey = 'hero';
       let customCharImg = heroBirdImg;
@@ -796,6 +807,7 @@
         hero: { name: 'Hero (Beanie)', shortName: 'Hero', img: heroBirdImg, isEmoji: false, thumb: 'bird.png' },
         harish: { name: 'Harish', shortName: 'Harish', img: harishImg, isEmoji: false, thumb: 'harish.png' },
         sanjay: { name: 'Sanjay', shortName: 'Sanjay', img: sanjayImg, isEmoji: false, thumb: 'sanjay.png' },
+        san: { name: 'San', shortName: 'San', img: sanImg, isEmoji: false, thumb: 'san.png' },
         classic: { name: 'Classic Bird', shortName: 'Classic', img: null, isEmoji: true, thumb: '🐥' },
         custom: { name: 'Custom Character', shortName: 'Custom', img: null, isEmoji: false, thumb: null }
       };
@@ -848,13 +860,13 @@
           const badge = btn.querySelector('.active-badge');
 
           if (key === activeCharKey) {
-            btn.className = (key === 'custom' ? 'char-select-btn col-span-2 ' : 'char-select-btn ') + 'p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative active:scale-95 shadow-sm shadow-emerald-500/20';
+            btn.className = 'char-select-btn p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative active:scale-95 shadow-sm shadow-emerald-500/20';
             if (badge) {
               badge.textContent = '✓ Active';
               badge.className = 'text-[10px] text-emerald-400 font-bold active-badge';
             }
           } else {
-            btn.className = (key === 'custom' ? 'char-select-btn col-span-2 ' : 'char-select-btn ') + 'p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95';
+            btn.className = 'char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95';
             if (badge) {
               badge.textContent = key === 'custom' && !customUploadedImg ? 'Upload' : 'Select';
               badge.className = 'text-[10px] text-slate-400 font-medium active-badge';
@@ -877,6 +889,8 @@
           customCharImg = harishImg;
         } else if (key === 'sanjay') {
           customCharImg = sanjayImg;
+        } else if (key === 'san') {
+          customCharImg = sanImg;
         } else if (key === 'classic') {
           customCharImg = null;
         } else if (key === 'custom' && customUploadedImg) {
