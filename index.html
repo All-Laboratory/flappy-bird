@@ -271,7 +271,7 @@
 
           <!-- Email Confirmation Help Box -->
           <div id="emailConfirmNotice" class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300/90 leading-relaxed hidden">
-            💡 <strong>Email Confirmation Notice:</strong> If your Supabase requires email verification, click the link sent to your inbox. You can also turn off <em>"Confirm email"</em> in your Supabase Auth dashboard for instant logins.
+            💡 <strong>Instant Sign In:</strong> If your Supabase dashboard has <em>"Confirm email"</em> enabled, check your inbox. Turn it OFF in Supabase Auth Providers to skip verification.
           </div>
 
           <div class="pt-2 border-t border-slate-800 text-center">
@@ -429,7 +429,7 @@
                 </div>
                 <div class="min-w-0 flex-1">
                   <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom Skin</div>
-                  <div id="customCharSub" class="text-[10px] text-slate-400 font-medium active-badge">Upload</div>
+                  <div id="customCharSub" class="text-[10px] text-emerald-400 font-medium active-badge">Upload & Save</div>
                 </div>
               </button>
 
@@ -1035,6 +1035,9 @@
           customCharImg = customUploadedImg;
         }
 
+        const saveKey = currentUser ? `flappy_active_char_${currentUser.id}` : 'flappy_active_char_guest';
+        localStorage.setItem(saveKey, activeCharKey);
+
         updateCharacterUI();
         playSound('score');
       }
@@ -1356,7 +1359,12 @@
 
         const playerName = (currentProfile && currentProfile.username) ? currentProfile.username : 'Guest';
         const charName = charInfo[activeCharKey] ? charInfo[activeCharKey].name : 'Hero';
-        const avatarUrl = (customCharImg && customCharImg.src) ? (customCharImg.src.startsWith('data:') ? null : customCharImg.src) : 'bird.png';
+        
+        let avatarUrl = 'bird.png';
+        if (customCharImg && customCharImg.src) {
+          // If custom image is small dataUrl or standard url
+          avatarUrl = customCharImg.src.length > 50000 ? 'bird.png' : customCharImg.src;
+        }
 
         try {
           await supabaseClient.from('leaderboard').insert([
@@ -1784,7 +1792,7 @@
         });
       }
 
-      // --- SUPABASE AUTHENTICATION CONTROLLER ---
+      // --- SUPABASE AUTHENTICATION & PROFILE CONTROLLER ---
       const authModal = document.getElementById('authModal');
       const authLoggedInView = document.getElementById('authLoggedInView');
       const authLoggedOutView = document.getElementById('authLoggedOutView');
@@ -1851,6 +1859,41 @@
       if (tabSignInBtn) tabSignInBtn.addEventListener('click', () => setAuthTab(false));
       if (tabSignUpBtn) tabSignUpBtn.addEventListener('click', () => setAuthTab(true));
 
+      // Restore user custom character image
+      function loadUserCustomCharacter(imageDataUrl, charName) {
+        if (!imageDataUrl) return;
+
+        const img = new Image();
+        img.onload = () => {
+          customUploadedImg = img;
+          charInfo.custom.img = img;
+          charInfo.custom.name = charName || 'My Skin';
+          charInfo.custom.shortName = (charName || 'My Skin').substring(0, 8);
+
+          const customCharThumb = document.getElementById('customCharThumb');
+          const customCharPlaceholder = document.getElementById('customCharPlaceholder');
+          const customCharTitle = document.getElementById('customCharTitle');
+          const customCharSub = document.getElementById('customCharSub');
+
+          if (customCharThumb) {
+            customCharThumb.src = imageDataUrl;
+            customCharThumb.classList.remove('hidden');
+          }
+          if (customCharPlaceholder) customCharPlaceholder.classList.add('hidden');
+          if (customCharTitle) customCharTitle.textContent = charInfo.custom.shortName;
+          if (customCharSub) customCharSub.textContent = 'Cloud Saved ✓';
+
+          const saveKey = currentUser ? `flappy_active_char_${currentUser.id}` : 'flappy_active_char_guest';
+          const savedActive = localStorage.getItem(saveKey);
+          if (savedActive === 'custom') {
+            selectCharacter('custom');
+          } else {
+            updateCharacterUI();
+          }
+        };
+        img.src = imageDataUrl;
+      }
+
       async function refreshUserProfile() {
         if (!supabaseClient) return;
 
@@ -1859,7 +1902,7 @@
           if (session && session.user) {
             currentUser = session.user;
             
-            // Fetch profile
+            // 1. Fetch profile from database
             const { data: profile } = await supabaseClient
               .from('profiles')
               .select('*')
@@ -1872,6 +1915,15 @@
                 highScore = profile.high_score;
                 localStorage.setItem('flappy_custom_highscore', highScore);
                 updateScoreDisplays();
+              }
+
+              // Load saved custom character from profile or local cache
+              const localCachedAvatar = localStorage.getItem(`flappy_custom_char_${currentUser.id}`);
+              const cloudAvatar = profile.avatar_url && profile.avatar_url !== 'bird.png' ? profile.avatar_url : null;
+              const avatarToLoad = cloudAvatar || localCachedAvatar;
+
+              if (avatarToLoad) {
+                loadUserCustomCharacter(avatarToLoad, profile.username ? `${profile.username}'s Skin` : 'My Skin');
               }
             } else {
               currentProfile = {
@@ -1895,7 +1947,14 @@
             const hudAuthIcon = document.getElementById('hudAuthIcon');
             if (hudAuthIcon) hudAuthIcon.textContent = '🟢';
 
-            updateCharacterUI();
+            // Restore saved character preference
+            const savedCharKey = localStorage.getItem(`flappy_active_char_${currentUser.id}`);
+            if (savedCharKey && charInfo[savedCharKey]) {
+              selectCharacter(savedCharKey);
+            } else {
+              updateCharacterUI();
+            }
+
           } else {
             currentUser = null;
             currentProfile = null;
@@ -1909,6 +1968,12 @@
             if (hudCharName) hudCharName.textContent = 'Login';
             const hudAuthIcon = document.getElementById('hudAuthIcon');
             if (hudAuthIcon) hudAuthIcon.textContent = '👤';
+
+            // Check guest cached custom character
+            const guestCachedAvatar = localStorage.getItem('flappy_custom_char_guest');
+            if (guestCachedAvatar) {
+              loadUserCustomCharacter(guestCachedAvatar, 'Custom');
+            }
 
             updateCharacterUI();
           }
@@ -1948,7 +2013,6 @@
 
               if (error) throw error;
 
-              // If session created immediately (email confirmation disabled)
               if (data.session) {
                 if (data.user) {
                   await supabaseClient.from('profiles').upsert([
@@ -1969,7 +2033,6 @@
                   refreshUserProfile();
                 }, 600);
               } else {
-                // Email confirmation is required by Supabase
                 authMsg.innerHTML = '✉️ <strong>Account Created!</strong> Please check your email inbox to verify your account.<br><br><span class="text-amber-300">Tip: To skip email verification, turn OFF <em>"Confirm email"</em> in your Supabase Auth Providers setting.</span>';
                 authMsg.className = 'text-[11px] font-medium p-2.5 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-300 leading-relaxed';
                 authMsg.classList.remove('hidden');
@@ -2217,35 +2280,52 @@
         }
       });
 
-      // Custom Character Upload
+      // Custom Character Upload & Auto-Save to Supabase Profile
       const charInput = document.getElementById('charImageInput');
       const customCharThumb = document.getElementById('customCharThumb');
       const customCharPlaceholder = document.getElementById('customCharPlaceholder');
       const customCharTitle = document.getElementById('customCharTitle');
       const customCharSub = document.getElementById('customCharSub');
 
-      function setCustomCharacter(file) {
+      async function setCustomCharacter(file) {
         if (!file) return;
+
+        if (customCharSub) customCharSub.textContent = 'Saving skin...';
+
         const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            customUploadedImg = img;
-            charInfo.custom.img = img;
-            charInfo.custom.name = file.name.substring(0, 14);
-            charInfo.custom.shortName = file.name.substring(0, 8);
+        reader.onload = async (e) => {
+          const dataUrl = e.target.result;
+          const charName = file.name.substring(0, 14);
 
-            if (customCharThumb) {
-              customCharThumb.src = e.target.result;
-              customCharThumb.classList.remove('hidden');
+          // 1. Cache in browser storage
+          const cacheKey = currentUser ? `flappy_custom_char_${currentUser.id}` : 'flappy_custom_char_guest';
+          try {
+            localStorage.setItem(cacheKey, dataUrl);
+          } catch(err) {
+            console.warn("Local storage quota:", err);
+          }
+
+          // 2. Load into memory
+          loadUserCustomCharacter(dataUrl, charName);
+          selectCharacter('custom');
+
+          // 3. Save to Supabase Profile if logged in
+          if (currentUser && supabaseClient) {
+            try {
+              await supabaseClient
+                .from('profiles')
+                .update({
+                  avatar_url: dataUrl
+                })
+                .eq('id', currentUser.id);
+
+              if (customCharSub) customCharSub.textContent = 'Cloud Saved ✓';
+            } catch (err) {
+              console.warn("Could not save avatar to Supabase profile:", err);
             }
-            if (customCharPlaceholder) customCharPlaceholder.classList.add('hidden');
-            if (customCharTitle) customCharTitle.textContent = file.name.substring(0, 10);
-            if (customCharSub) customCharSub.textContent = 'Custom';
-
-            selectCharacter('custom');
-          };
-          img.src = e.target.result;
+          } else {
+            if (customCharSub) customCharSub.textContent = 'Local Saved ✓';
+          }
         };
         reader.readAsDataURL(file);
       }
