@@ -129,7 +129,7 @@
 
         <!-- Floating Score Submitted Banner -->
         <div id="scoreSavedToast" class="absolute top-14 inset-x-0 mx-auto w-fit px-3 py-1 bg-emerald-500/90 backdrop-blur-md text-white text-[11px] font-bold rounded-full shadow-lg pointer-events-none opacity-0 transition-opacity duration-300 z-30 border border-emerald-300/40">
-          🏆 Score Saved to Leaderboard!
+          🏆 New High Score Saved!
         </div>
 
         <!-- ======================================================= -->
@@ -301,7 +301,7 @@
             <span class="text-xl">🏆</span>
             <div>
               <h2 class="font-bold text-sm text-slate-100">Global Leaderboard</h2>
-              <p class="text-[10px] text-slate-400">Live Top Rankings & Hall of Fame</p>
+              <p class="text-[10px] text-slate-400">Top Distinct Players & Best Scores</p>
             </div>
           </div>
           <button id="closeLeaderboardBtn" class="w-7 h-7 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center text-xs">✕</button>
@@ -317,7 +317,7 @@
           <button id="refreshLeaderboardBtn" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-semibold">
             <span>🔄 Refresh & Sync</span>
           </button>
-          <span class="text-[10px] text-slate-400">Scores auto-save on Game Over</span>
+          <span class="text-[10px] text-slate-400">1 entry per user (Best score only)</span>
         </div>
 
       </div>
@@ -683,7 +683,7 @@
         console.warn("Supabase init error:", e);
       }
 
-      // Current Auth State
+      // Current Auth State & Isolated High Scores
       let currentUser = null;
       let currentProfile = null;
 
@@ -953,7 +953,7 @@
       const STATES = { START: 0, PLAYING: 1, PAUSED: 2, GAMEOVER: 3 };
       let gameState = STATES.START;
       let score = 0;
-      let highScore = parseInt(localStorage.getItem('flappy_custom_highscore') || '0', 10);
+      let highScore = parseInt(localStorage.getItem('flappy_guest_highscore') || '0', 10);
       let gamesPlayed = parseInt(localStorage.getItem('flappy_custom_games_count') || '0', 10);
       let frames = 0;
       let screenShake = 0;
@@ -985,7 +985,7 @@
 
       let activeCharKey = 'hero';
       let customCharImg = heroBirdImg;
-      let communitySkins = []; // Array of { id, name, creator, imgUrl, imgObj }
+      let communitySkins = [];
 
       const standardChars = {
         hero: { name: 'Hero (Beanie)', shortName: 'Hero', img: heroBirdImg, isEmoji: false, thumb: 'bird.png' },
@@ -1015,12 +1015,10 @@
       function updateCharacterUI() {
         const info = getCurrentCharDetails();
 
-        // Desktop header
         const headerAvatarImg = document.getElementById('headerAvatarImg');
         const headerAvatarEmoji = document.getElementById('headerAvatarEmoji');
         const customActiveBadge = document.getElementById('customActiveBadge');
         
-        // Floating mobile HUD
         const hudAvatarImg = document.getElementById('hudAvatarImg');
         const hudAvatarEmoji = document.getElementById('hudAvatarEmoji');
         const hudCharName = document.getElementById('hudCharName');
@@ -1067,7 +1065,6 @@
         if (hudCharName) hudCharName.textContent = activeName;
         if (charStatusTag) charStatusTag.textContent = info.name;
 
-        // Update standard buttons active state
         document.querySelectorAll('.char-select-btn').forEach(btn => {
           const key = btn.getAttribute('data-char');
           const badge = btn.querySelector('.active-badge');
@@ -1087,7 +1084,6 @@
           }
         });
 
-        // Update community skin buttons active state
         document.querySelectorAll('.community-char-btn').forEach(btn => {
           const key = btn.getAttribute('data-community-id');
           const badge = btn.querySelector('.community-badge');
@@ -1118,7 +1114,6 @@
           else if (key === 'san') customCharImg = sanImg;
           else if (key === 'classic') customCharImg = null;
         } else {
-          // Community skin
           const found = communitySkins.find(s => s.id === key);
           if (found && found.imgObj) {
             customCharImg = found.imgObj;
@@ -1185,7 +1180,6 @@
 
         communityCharsList.innerHTML = html;
 
-        // Attach click listeners to community skins
         document.querySelectorAll('.community-char-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-community-id');
@@ -1197,7 +1191,6 @@
       async function fetchCommunityCharacters() {
         if (!communityCharsList) return;
 
-        // 1. Fetch from Supabase
         let remoteSkins = [];
         if (supabaseClient) {
           try {
@@ -1215,14 +1208,12 @@
           }
         }
 
-        // 2. Fetch from Local Storage
         let localSkins = [];
         try {
           const raw = localStorage.getItem('flappy_community_skins');
           if (raw) localSkins = JSON.parse(raw);
         } catch(e) {}
 
-        // 3. Merge & Deduplicate
         const mergedMap = new Map();
         [...remoteSkins, ...localSkins].forEach(item => {
           const id = item.id ? String(item.id) : (item.name + '_' + item.created_at);
@@ -1243,7 +1234,6 @@
 
         communitySkins = Array.from(mergedMap.values());
 
-        // Cache merged skins locally
         try {
           localStorage.setItem('flappy_community_skins', JSON.stringify(communitySkins.map(s => ({
             id: s.id,
@@ -1257,7 +1247,6 @@
 
         renderCommunityCharactersList();
 
-        // If current active character is one of community skins, update image
         const activeCommunity = communitySkins.find(s => s.id === activeCharKey);
         if (activeCommunity) {
           customCharImg = activeCommunity.imgObj;
@@ -1269,7 +1258,6 @@
         refreshCommunityCharsBtn.addEventListener('click', fetchCommunityCharacters);
       }
 
-      // Optimize image before saving (resize to max 128x128 for lightning speed & tiny size)
       function optimizeImage(file, callback) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -1321,7 +1309,6 @@
             created_at: new Date().toISOString()
           };
 
-          // 1. Save to Supabase custom_characters table
           if (supabaseClient) {
             try {
               await supabaseClient.from('custom_characters').insert([
@@ -1337,7 +1324,6 @@
             }
           }
 
-          // 2. Save into local community roster cache
           try {
             const raw = localStorage.getItem('flappy_community_skins');
             const list = raw ? JSON.parse(raw) : [];
@@ -1351,7 +1337,6 @@
           }
           newCharNameInput.value = '';
 
-          // Refresh and automatically equip the newly uploaded character!
           await fetchCommunityCharacters();
           selectCharacter(skinId);
         });
@@ -1674,23 +1659,33 @@
         ctx.strokeRect(lipX, lipY, lipWidth, lipHeight);
       }
 
-      // --- RESILIENT LEADERBOARD SUBMISSION & CACHING ---
+      // --- RESILIENT SINGLE-ENTRY LEADERBOARD CONTROLLER ---
       function saveLocalScore(username, scoreVal, charName, avatarUrl, userId) {
         try {
           const raw = localStorage.getItem('flappy_local_leaderboard');
           let list = raw ? JSON.parse(raw) : [];
           
-          list = list.filter(item => item.username !== username || item.score > scoreVal);
+          // Match by user_id if logged in, or by username
+          const existingIdx = list.findIndex(item => (userId && item.user_id === userId) || (!userId && item.username === username));
           
-          list.push({
-            id: Date.now(),
-            user_id: userId || null,
-            username: username || 'Player',
-            score: scoreVal,
-            character_name: charName || 'Hero',
-            avatar_url: avatarUrl || 'bird.png',
-            created_at: new Date().toISOString()
-          });
+          if (existingIdx !== -1) {
+            if (scoreVal > list[existingIdx].score) {
+              list[existingIdx].score = scoreVal;
+              list[existingIdx].character_name = charName;
+              list[existingIdx].avatar_url = avatarUrl;
+              list[existingIdx].username = username;
+            }
+          } else if (scoreVal > 0) {
+            list.push({
+              id: Date.now(),
+              user_id: userId || null,
+              username: username || 'Player',
+              score: scoreVal,
+              character_name: charName || 'Hero',
+              avatar_url: avatarUrl || 'bird.png',
+              created_at: new Date().toISOString()
+            });
+          }
 
           list.sort((a, b) => b.score - a.score);
           const topList = list.slice(0, 25);
@@ -1699,55 +1694,81 @@
       }
 
       async function submitScoreToSupabase(finalScore) {
-        if (finalScore === undefined || finalScore === null) return;
+        if (finalScore === undefined || finalScore === null || finalScore <= 0) return;
 
         const info = getCurrentCharDetails();
         const playerName = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? (currentUser.user_metadata?.username || currentUser.email.split('@')[0]) : 'Guest');
         const charName = info.name || 'Hero';
         const avatarUrl = info.thumb || 'bird.png';
 
-        // 1. Always save to local scoreboard cache immediately
-        saveLocalScore(playerName, finalScore, charName, avatarUrl, currentUser ? currentUser.id : null);
+        // 1. Update active user's local high score
+        if (currentUser) {
+          if (finalScore > (currentProfile?.high_score || 0)) {
+            highScore = finalScore;
+            if (currentProfile) currentProfile.high_score = finalScore;
+            localStorage.setItem(`flappy_user_highscore_${currentUser.id}`, highScore);
+            updateScoreDisplays();
 
-        // Show Score Saved Toast
-        const toast = document.getElementById('scoreSavedToast');
-        if (toast && finalScore > 0) {
-          toast.style.opacity = '1';
-          setTimeout(() => { toast.style.opacity = '0'; }, 2200);
-        }
-
-        // 2. Submit to Supabase
-        if (!supabaseClient) return;
-
-        try {
-          if (currentUser) {
-            await supabaseClient.from('profiles').upsert([
-              {
-                id: currentUser.id,
-                username: playerName,
-                avatar_url: avatarUrl,
-                high_score: Math.max(finalScore, (currentProfile ? currentProfile.high_score || 0 : 0))
-              }
-            ]);
-            if (currentProfile) {
-              currentProfile.high_score = Math.max(finalScore, currentProfile.high_score || 0);
+            const toast = document.getElementById('scoreSavedToast');
+            if (toast) {
+              toast.style.opacity = '1';
+              setTimeout(() => { toast.style.opacity = '0'; }, 2200);
             }
           }
+        } else {
+          if (finalScore > highScore) {
+            highScore = finalScore;
+            localStorage.setItem('flappy_guest_highscore', highScore);
+            updateScoreDisplays();
+          }
+        }
 
-          if (finalScore > 0) {
-            const { error } = await supabaseClient.from('leaderboard').insert([
+        // 2. Always save to local scoreboard cache
+        saveLocalScore(playerName, finalScore, charName, avatarUrl, currentUser ? currentUser.id : null);
+
+        // 3. Submit to Supabase if logged in
+        if (!supabaseClient || !currentUser) return;
+
+        try {
+          // A. Update profile high score
+          await supabaseClient.from('profiles').upsert([
+            {
+              id: currentUser.id,
+              username: playerName,
+              avatar_url: avatarUrl,
+              high_score: Math.max(finalScore, currentProfile?.high_score || 0)
+            }
+          ]);
+
+          // B. Upsert into leaderboard table (Single entry per user_id)
+          const { data: existingEntry } = await supabaseClient
+            .from('leaderboard')
+            .select('id, score')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+          if (existingEntry) {
+            if (finalScore > existingEntry.score) {
+              await supabaseClient
+                .from('leaderboard')
+                .update({
+                  username: playerName,
+                  score: finalScore,
+                  character_name: charName,
+                  avatar_url: avatarUrl
+                })
+                .eq('id', existingEntry.id);
+            }
+          } else {
+            await supabaseClient.from('leaderboard').insert([
               {
-                user_id: currentUser ? currentUser.id : null,
+                user_id: currentUser.id,
                 username: playerName,
                 score: finalScore,
                 character_name: charName,
                 avatar_url: avatarUrl
               }
             ]);
-
-            if (error) {
-              console.warn("Supabase leaderboard insert notice:", error.message);
-            }
           }
         } catch (err) {
           console.warn("Could not save score to Supabase:", err);
@@ -1773,12 +1794,18 @@
 
         if (score > highScore) {
           highScore = score;
-          localStorage.setItem('flappy_custom_highscore', highScore);
+          if (currentUser) {
+            localStorage.setItem(`flappy_user_highscore_${currentUser.id}`, highScore);
+          } else {
+            localStorage.setItem('flappy_guest_highscore', highScore);
+          }
         }
         updateScoreDisplays();
 
-        // Submit score to cloud and local scoreboard
-        submitScoreToSupabase(score);
+        // Submit score
+        if (score > 0) {
+          submitScoreToSupabase(score);
+        }
 
         emitLiquid(bird.x, bird.y, 25, true);
 
@@ -2240,26 +2267,21 @@
               .from('profiles')
               .select('*')
               .eq('id', currentUser.id)
-              .single();
+              .maybeSingle();
 
             if (profile) {
               currentProfile = profile;
-              if (profile.high_score && profile.high_score > highScore) {
-                highScore = profile.high_score;
-                localStorage.setItem('flappy_custom_highscore', highScore);
-                updateScoreDisplays();
-              } else if (highScore > (profile.high_score || 0)) {
-                submitScoreToSupabase(highScore);
-              }
+              highScore = profile.high_score || 0;
             } else {
               currentProfile = {
                 username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
-                high_score: highScore
+                high_score: 0
               };
-              submitScoreToSupabase(highScore);
+              highScore = 0;
             }
 
-            saveLocalScore(currentProfile.username, highScore, getCurrentCharDetails().name, getCurrentCharDetails().thumb, currentUser.id);
+            localStorage.setItem(`flappy_user_highscore_${currentUser.id}`, highScore);
+            updateScoreDisplays();
 
             // Update UI
             document.getElementById('authLoggedInView').classList.remove('hidden');
@@ -2286,6 +2308,9 @@
           } else {
             currentUser = null;
             currentProfile = null;
+            highScore = parseInt(localStorage.getItem('flappy_guest_highscore') || '0', 10);
+            updateScoreDisplays();
+
             document.getElementById('authLoggedInView').classList.add('hidden');
             document.getElementById('authLoggedOutView').classList.remove('hidden');
             document.getElementById('authTextDesktop').textContent = 'Login';
@@ -2340,7 +2365,7 @@
                     {
                       id: data.user.id,
                       username: username,
-                      high_score: highScore,
+                      high_score: 0,
                       avatar_url: 'bird.png'
                     }
                   ]);
@@ -2352,7 +2377,6 @@
                 setTimeout(() => {
                   closeAuthModal();
                   refreshUserProfile();
-                  submitScoreToSupabase(highScore);
                   fetchCommunityCharacters();
                 }, 600);
               } else {
@@ -2380,7 +2404,6 @@
               setTimeout(() => {
                 closeAuthModal();
                 refreshUserProfile();
-                submitScoreToSupabase(highScore);
                 fetchCommunityCharacters();
               }, 500);
             }
@@ -2405,7 +2428,7 @@
         });
       }
 
-      // --- GLOBAL & LOCAL HYBRID LEADERBOARD CONTROLLER ---
+      // --- GLOBAL & LOCAL DEDUPLICATED LEADERBOARD CONTROLLER ---
       const leaderboardModal = document.getElementById('leaderboardModal');
       const leaderboardList = document.getElementById('leaderboardList');
       const hudLeaderboardBtn = document.getElementById('hudLeaderboardBtn');
@@ -2419,11 +2442,21 @@
 
         const currentActiveUsername = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? currentUser.email.split('@')[0] : null);
 
-        let listToRender = [...(scores || [])];
+        // Deduplicate list by user_id or username to ensure 1 entry per player!
+        const uniqueMap = new Map();
+        (scores || []).forEach(entry => {
+          const key = entry.user_id || entry.username;
+          if (!key) return;
+          if (!uniqueMap.has(key) || entry.score > uniqueMap.get(key).score) {
+            uniqueMap.set(key, entry);
+          }
+        });
+
+        // Ensure current user is present if they have a high score
         if (currentActiveUsername && highScore > 0) {
-          const userFound = listToRender.some(entry => entry.username === currentActiveUsername || (currentUser && entry.user_id === currentUser.id));
-          if (!userFound) {
-            listToRender.push({
+          const userKey = currentUser ? currentUser.id : currentActiveUsername;
+          if (!uniqueMap.has(userKey) || highScore > uniqueMap.get(userKey).score) {
+            uniqueMap.set(userKey, {
               id: 'my-current-score',
               user_id: currentUser ? currentUser.id : null,
               username: currentActiveUsername,
@@ -2431,9 +2464,10 @@
               character_name: getCurrentCharDetails().name || 'Hero',
               avatar_url: getCurrentCharDetails().thumb || 'bird.png'
             });
-            listToRender.sort((a, b) => b.score - a.score);
           }
         }
+
+        const listToRender = Array.from(uniqueMap.values()).sort((a, b) => b.score - a.score);
 
         if (listToRender.length === 0) {
           leaderboardList.innerHTML = `
@@ -2508,17 +2542,13 @@
         if (!leaderboardList) return;
         leaderboardList.innerHTML = '<div class="text-center py-8 text-xs text-slate-400 animate-pulse">Loading live scores...</div>';
 
-        if (highScore > 0) {
-          submitScoreToSupabase(highScore);
-        }
-
         if (supabaseClient) {
           try {
             const { data: cloudScores, error } = await supabaseClient
               .from('leaderboard')
               .select('*')
               .order('score', { ascending: false })
-              .limit(25);
+              .limit(50);
 
             if (!error && cloudScores && cloudScores.length > 0) {
               renderScoresList(cloudScores, false);
