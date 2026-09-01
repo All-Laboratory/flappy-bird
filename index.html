@@ -176,20 +176,20 @@
             <div class="grid grid-cols-2 gap-2 mb-3">
               
               <!-- Option 1: Hero (Beanie) -->
-              <button data-char="hero" class="char-select-btn p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative shadow-sm">
-                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img src="bird.png" alt="Hero Bird" class="w-9 h-9 object-contain">
+              <button data-char="hero" class="char-select-btn p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative shadow-sm shadow-emerald-500/20">
+                <div class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="bird.png" alt="Hero Bird" class="w-8 h-8 object-contain">
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-xs font-bold text-slate-100 truncate">Hero Bird</div>
-                  <div class="text-[10px] text-emerald-400 font-medium active-badge">✓ Active</div>
+                  <div class="text-[10px] text-emerald-400 font-bold active-badge">✓ Active</div>
                 </div>
               </button>
 
               <!-- Option 2: Harish -->
               <button data-char="harish" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative">
-                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img src="harish.png" alt="Harish" class="w-9 h-9 object-contain">
+                <div class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="harish.png" alt="Harish" class="w-8 h-8 object-contain">
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-xs font-bold text-slate-200 truncate">Harish</div>
@@ -197,9 +197,20 @@
                 </div>
               </button>
 
-              <!-- Option 3: Classic 🐥 -->
+              <!-- Option 3: Sanjay -->
+              <button data-char="sanjay" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative">
+                <div class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="sanjay.png" alt="Sanjay" class="w-8 h-8 object-contain">
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-bold text-slate-200 truncate">Sanjay</div>
+                  <div class="text-[10px] text-slate-400 font-medium active-badge">Select</div>
+                </div>
+              </button>
+
+              <!-- Option 4: Classic 🐥 -->
               <button data-char="classic" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative">
-                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-2xl flex-shrink-0">
+                <div class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-xl flex-shrink-0">
                   🐥
                 </div>
                 <div class="min-w-0 flex-1">
@@ -208,28 +219,24 @@
                 </div>
               </button>
 
-              <!-- Option 4: Custom Upload -->
-              <button data-char="custom" id="customCharCard" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative">
-                <div id="customAvatarBox" class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
-                  <img id="customCharThumb" src="" alt="Custom" class="w-9 h-9 object-contain hidden">
-                  <span id="customCharPlaceholder">➕</span>
+              <!-- Option 5: Custom Upload (Full width) -->
+              <button data-char="custom" id="customCharCard" class="char-select-btn col-span-2 p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center justify-between gap-2.5 relative">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div id="customAvatarBox" class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-lg flex-shrink-0 overflow-hidden">
+                    <img id="customCharThumb" src="" alt="Custom" class="w-8 h-8 object-contain hidden">
+                    <span id="customCharPlaceholder">➕</span>
+                  </div>
+                  <div class="min-w-0">
+                    <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom Upload</div>
+                    <div id="customCharSub" class="text-[10px] text-slate-400 font-medium">Add your own image</div>
+                  </div>
                 </div>
-                <div class="min-w-0 flex-1">
-                  <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom...</div>
-                  <div id="customCharSub" class="text-[10px] text-slate-400 font-medium active-badge">Upload</div>
-                </div>
+                <span class="text-[10px] text-slate-400 font-medium active-badge bg-slate-700 px-2 py-0.5 rounded-md">Upload</span>
               </button>
 
             </div>
 
-            <!-- Upload Custom Sprite Button -->
-            <div class="flex items-center justify-between pt-2 border-t border-slate-700/80">
-              <span class="text-[11px] text-slate-400">Want another character?</span>
-              <button id="uploadCharBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-750 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-semibold transition shadow-sm inline-flex items-center gap-1">
-                <span>📁 Upload New PNG/JPG</span>
-              </button>
-              <input type="file" id="charImageInput" accept="image/*" style="display:none">
-            </div>
+            <input type="file" id="charImageInput" accept="image/*" style="display:none">
 
             <!-- Bird Size Slider -->
             <div class="pt-3 mt-3 border-t border-slate-700/80">
@@ -431,21 +438,18 @@
         return audioCtx;
       }
 
-      // Store decoded Web Audio buffers for instant lag-free playback
       const customAudioBuffers = {
         flap: null,
         score: null,
         hit: null
       };
 
-      // Store HTMLAudioElement fallback
       const customAudioElements = {
         flap: new Audio('flap.mp4'),
         score: null,
         hit: new Audio('crashpoint.mp4')
       };
 
-      // Active audio source trackers to enforce immediate stoppage and sound isolation
       let activeFlapSources = [];
       let activeFlapElements = [];
       let isCrashPlaying = false;
@@ -496,14 +500,12 @@
       function playSound(type) {
         if (!soundEnabled) return;
 
-        // RULE: While crashpoint is playing OR game is in Game Over state, NEVER play flap sound!
         if (type === 'flap' && (isCrashPlaying || gameState === STATES.GAMEOVER)) {
           return;
         }
 
         const ctx = getAudioContext();
 
-        // 1. High performance decoded Web Audio Buffer
         if (customAudioBuffers[type] && ctx) {
           try {
             const source = ctx.createBufferSource();
@@ -533,7 +535,6 @@
           }
         }
 
-        // 2. HTML5 Audio Element Fallback
         if (customAudioElements[type]) {
           try {
             const audio = customAudioElements[type].cloneNode();
@@ -557,7 +558,6 @@
           } catch(e) {}
         }
 
-        // 3. Procedural Web Audio Synth fallback
         if (!ctx) return;
         const now = ctx.currentTime;
 
@@ -719,6 +719,9 @@
       const harishImg = new Image();
       harishImg.src = 'harish.png';
 
+      const sanjayImg = new Image();
+      sanjayImg.src = 'sanjay.png';
+
       let customUploadedImg = null;
       let activeCharKey = 'hero';
       let customCharImg = heroBirdImg;
@@ -726,6 +729,7 @@
       const charInfo = {
         hero: { name: 'Hero (Beanie)', shortName: 'Hero', img: heroBirdImg, isEmoji: false, thumb: 'bird.png' },
         harish: { name: 'Harish', shortName: 'Harish', img: harishImg, isEmoji: false, thumb: 'harish.png' },
+        sanjay: { name: 'Sanjay', shortName: 'Sanjay', img: sanjayImg, isEmoji: false, thumb: 'sanjay.png' },
         classic: { name: 'Classic Bird', shortName: 'Classic', img: null, isEmoji: true, thumb: '🐥' },
         custom: { name: 'Custom Character', shortName: 'Custom', img: null, isEmoji: false, thumb: null }
       };
@@ -734,7 +738,6 @@
         const info = charInfo[activeCharKey];
         if (!info) return;
 
-        // 1. Update Header Avatar & Badge
         const headerAvatarImg = document.getElementById('headerAvatarImg');
         const headerAvatarEmoji = document.getElementById('headerAvatarEmoji');
         const customActiveBadge = document.getElementById('customActiveBadge');
@@ -752,19 +755,18 @@
         customActiveBadge.textContent = info.shortName;
         document.getElementById('charStatusTag').textContent = info.name;
 
-        // 2. Update Roster Cards in Settings Modal
         document.querySelectorAll('.char-select-btn').forEach(btn => {
           const key = btn.getAttribute('data-char');
           const badge = btn.querySelector('.active-badge');
 
           if (key === activeCharKey) {
-            btn.className = 'char-select-btn p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative shadow-sm shadow-emerald-500/20';
+            btn.className = (key === 'custom' ? 'char-select-btn col-span-2 ' : 'char-select-btn ') + 'p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative shadow-sm shadow-emerald-500/20';
             if (badge) {
               badge.textContent = '✓ Active';
               badge.className = 'text-[10px] text-emerald-400 font-bold active-badge';
             }
           } else {
-            btn.className = 'char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative';
+            btn.className = (key === 'custom' ? 'char-select-btn col-span-2 ' : 'char-select-btn ') + 'p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative';
             if (badge) {
               badge.textContent = key === 'custom' && !customUploadedImg ? 'Upload' : 'Select';
               badge.className = 'text-[10px] text-slate-400 font-medium active-badge';
@@ -784,6 +786,8 @@
           customCharImg = heroBirdImg;
         } else if (key === 'harish') {
           customCharImg = harishImg;
+        } else if (key === 'sanjay') {
+          customCharImg = sanjayImg;
         } else if (key === 'classic') {
           customCharImg = null;
         } else if (key === 'custom' && customUploadedImg) {
