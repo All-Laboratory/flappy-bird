@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full w-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -13,12 +13,17 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       -webkit-user-select: none;
+      box-sizing: border-box;
     }
     html, body {
+      width: 100%;
       height: 100%;
       height: 100dvh;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
       touch-action: manipulation;
+      background-color: #020617;
     }
     @keyframes bounce-gentle {
       0%, 100% { transform: translateY(0); }
@@ -28,14 +33,21 @@
       animation: bounce-gentle 1.8s ease-in-out infinite;
     }
     .game-shadow {
-      box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.1);
     }
     .safe-top {
-      padding-top: max(0.5rem, env(safe-area-inset-top));
+      padding-top: max(0.6rem, env(safe-area-inset-top));
     }
     .safe-bottom {
-      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+      padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
     }
+    .safe-right {
+      padding-right: max(0.6rem, env(safe-area-inset-right));
+    }
+    .safe-left {
+      padding-left: max(0.6rem, env(safe-area-inset-left));
+    }
+    /* Fullscreen specifics */
     :fullscreen #mainWrapper, :-webkit-full-screen #mainWrapper {
       max-width: 100vw !important;
       width: 100vw !important;
@@ -43,10 +55,6 @@
       height: 100dvh !important;
       border-radius: 0 !important;
       border: none !important;
-    }
-    :fullscreen #gameContainer, :-webkit-full-screen #gameContainer {
-      max-height: 82vh !important;
-      aspect-ratio: 9/13;
     }
     ::-webkit-scrollbar {
       width: 4px;
@@ -61,13 +69,13 @@
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500 selection:text-white flex items-center justify-center p-0 sm:p-3 overflow-hidden h-full">
+<body class="bg-slate-950 text-slate-100 antialiased flex items-center justify-center p-0 sm:p-3 overflow-hidden h-full w-full">
 
-  <!-- Main Game Frame (Full height on mobile, Card on desktop) -->
-  <div id="mainWrapper" class="w-full sm:max-w-md h-[100dvh] sm:h-auto sm:max-h-[96vh] bg-slate-900 text-slate-100 sm:border border-slate-700/80 sm:rounded-2xl shadow-2xl overflow-hidden relative flex flex-col justify-between">
+  <!-- Main Game Frame (Edge-to-edge full screen on mobile, styled card on desktop) -->
+  <div id="mainWrapper" class="w-full h-full sm:h-auto sm:max-h-[96vh] sm:max-w-md bg-slate-900 text-slate-100 sm:border border-slate-700/80 sm:rounded-2xl shadow-2xl overflow-hidden relative flex flex-col justify-between">
     
-    <!-- Top Action Header -->
-    <header class="border-b border-slate-800 px-3.5 py-2.5 sm:py-2.5 flex items-center justify-between gap-2 bg-slate-900/95 backdrop-blur-md z-10 flex-shrink-0 safe-top">
+    <!-- Top Action Header (Visible on Desktop / Tablets) -->
+    <header class="hidden sm:flex border-b border-slate-800 px-3.5 py-2.5 items-center justify-between gap-2 bg-slate-900/95 backdrop-blur-md z-10 flex-shrink-0">
       <div class="flex items-center gap-2">
         <div id="headerAvatarBox" class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center overflow-hidden shadow-sm border border-amber-300/30 flex-shrink-0">
           <img id="headerAvatarImg" src="bird.png" alt="Hero Bird" class="w-7 h-7 object-contain">
@@ -78,57 +86,84 @@
             Flappy Studio
             <span id="customActiveBadge" class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex-shrink-0">Hero</span>
           </h1>
-          <p class="text-[10px] text-slate-400 truncate">Tap screen to jump</p>
+          <p class="text-[10px] text-slate-400 truncate">Space / Click to fly</p>
         </div>
       </div>
 
-      <!-- Header Controls -->
+      <!-- Desktop Header Controls -->
       <div class="flex items-center gap-1.5 flex-shrink-0">
-        <button id="toggleAudioBtn" title="Toggle Sound (M)" class="p-2 sm:p-1.5 px-2.5 sm:px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs active:scale-95 hover:bg-slate-700 transition">
-          <span id="audioIcon">🔊</span>
+        <button id="toggleAudioBtnDesktop" title="Toggle Sound (M)" class="p-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs active:scale-95 hover:bg-slate-700 transition">
+          <span class="audioIconSpan">🔊</span>
         </button>
 
-        <button id="fullscreenBtn" title="Full Screen Mode (F)" class="p-2 sm:p-1.5 px-2.5 sm:px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs active:scale-95 hover:bg-slate-700 transition flex items-center gap-1">
-          <span id="fsIcon">⛶</span>
-          <span class="hidden sm:inline text-[11px]" id="fsText">Full</span>
+        <button id="fullscreenBtnDesktop" title="Full Screen Mode (F)" class="p-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs active:scale-95 hover:bg-slate-700 transition flex items-center gap-1">
+          <span class="fsIconSpan">⛶</span>
+          <span class="text-[11px]">Full</span>
         </button>
 
-        <button id="openSettingsBtn" class="px-3 py-2 sm:py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
-          <span class="text-xs">⚙️</span>
+        <button id="openSettingsBtnDesktop" class="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
+          <span>⚙️</span>
           <span>Settings</span>
         </button>
       </div>
     </header>
 
-    <!-- Game Screen Area (Adapts to Mobile height) -->
-    <div id="gameWrapper" class="relative flex-1 flex flex-col items-center justify-center p-2 sm:p-3 bg-slate-950 select-none overflow-hidden touch-none">
+    <!-- Game Screen Area (Edge-to-edge full mobile screen) -->
+    <div id="gameWrapper" class="relative flex-1 w-full h-full flex flex-col items-center justify-center p-0 sm:p-3 bg-slate-950 select-none overflow-hidden touch-none">
       
-      <!-- Canvas Box with responsive aspect ratio -->
-      <div id="gameContainer" class="relative w-full max-w-[340px] aspect-[9/13] max-h-[calc(100dvh-150px)] sm:max-h-[460px] rounded-xl sm:rounded-xl overflow-hidden game-shadow border border-slate-700/80 bg-sky-300 flex items-center justify-center">
+      <!-- Canvas Box: Fills 100% on Mobile, Aspect box on Desktop -->
+      <div id="gameContainer" class="relative w-full h-full sm:h-auto sm:max-w-[340px] sm:aspect-[9/13] sm:max-h-[460px] sm:rounded-xl overflow-hidden game-shadow sm:border border-slate-700/80 bg-sky-300 flex items-center justify-center">
         
-        <canvas id="gameCanvas" width="340" height="460" class="w-full h-full block cursor-pointer touch-none"></canvas>
+        <canvas id="gameCanvas" width="340" height="460" class="w-full h-full block cursor-pointer touch-none object-fill"></canvas>
 
         <!-- Hit Flash Effect -->
         <div id="flashEffect" class="absolute inset-0 bg-white pointer-events-none opacity-0 transition-opacity duration-150"></div>
 
-        <!-- Floating Action Overlay Icons -->
-        <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-auto z-10">
-          <button id="overlayPauseBtn" title="Pause Game (P)" class="w-8 h-8 sm:w-7 sm:h-7 rounded-lg bg-black/60 backdrop-blur-md text-white border border-white/20 text-xs flex items-center justify-center active:scale-90 hover:bg-black/80 transition">
+        <!-- ======================================================= -->
+        <!-- FLOATING OVERLAY: TOP LEFT BADGE & SCORE -->
+        <!-- ======================================================= -->
+        <div class="absolute top-0 left-0 safe-top safe-left p-3 z-20 flex items-center gap-2 pointer-events-none">
+          <div class="flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/15 text-white shadow-lg pointer-events-auto">
+            <div class="w-5 h-5 rounded-full bg-amber-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img id="hudAvatarImg" src="bird.png" alt="Hero" class="w-4 h-4 object-contain">
+              <span id="hudAvatarEmoji" class="text-xs hidden">🐥</span>
+            </div>
+            <span id="hudCharName" class="text-[11px] font-bold text-slate-100 truncate max-w-[80px]">Hero</span>
+            <span class="text-slate-500 text-[10px]">•</span>
+            <span class="text-[11px] font-mono text-emerald-400 font-bold">🏆 <span id="hudHighScore">0</span></span>
+          </div>
+        </div>
+
+        <!-- ======================================================= -->
+        <!-- FLOATING OVERLAY: TOP RIGHT CONTROLS (SETTINGS AT RIGHT TOP) -->
+        <!-- ======================================================= -->
+        <div class="absolute top-0 right-0 safe-top safe-right p-3 z-20 flex items-center gap-2 pointer-events-auto">
+          
+          <!-- Sound Toggle -->
+          <button id="hudAudioBtn" title="Toggle Sound (M)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-black/60 backdrop-blur-md text-white border border-white/20 text-sm flex items-center justify-center active:scale-90 hover:bg-black/80 transition shadow-lg">
+            <span class="audioIconSpan">🔊</span>
+          </button>
+
+          <!-- Pause Toggle -->
+          <button id="hudPauseBtn" title="Pause Game (P)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-black/60 backdrop-blur-md text-white border border-white/20 text-xs flex items-center justify-center active:scale-90 hover:bg-black/80 transition shadow-lg">
             ⏸
           </button>
-          <button id="overlaySettingsBtn" title="Settings (⚙️)" class="w-8 h-8 sm:w-7 sm:h-7 rounded-lg bg-black/60 backdrop-blur-md text-white border border-white/20 text-xs flex items-center justify-center active:scale-90 hover:bg-black/80 transition">
+
+          <!-- PROMINENT TOP-RIGHT SETTINGS ICON -->
+          <button id="hudSettingsBtn" title="Settings (⚙️)" class="w-10 h-10 sm:w-9 sm:h-9 rounded-xl bg-emerald-500/90 hover:bg-emerald-500 active:scale-90 backdrop-blur-md text-white border border-emerald-400/40 text-base flex items-center justify-center transition shadow-lg shadow-emerald-500/30">
             ⚙️
           </button>
+
         </div>
 
         <!-- Tap Prompt -->
-        <div id="quickPrompt" class="absolute bottom-2.5 inset-x-0 mx-auto w-fit px-3 py-1 bg-black/70 backdrop-blur-md text-white text-[11px] font-medium rounded-full pointer-events-none transition-opacity duration-300">
-          Tap Screen / [Space] to Jump
+        <div id="quickPrompt" class="absolute bottom-3 inset-x-0 mx-auto w-fit px-3.5 py-1 bg-black/70 backdrop-blur-md text-white text-[11px] font-medium rounded-full pointer-events-none transition-opacity duration-300 z-10 border border-white/10 safe-bottom">
+          Tap Screen to Jump
         </div>
 
       </div>
 
-      <!-- Quick keyboard helper -->
+      <!-- Quick keyboard helper (Desktop only) -->
       <div class="mt-1.5 hidden sm:flex items-center justify-between w-full max-w-[340px] text-[10px] text-slate-400 px-1">
         <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">Space</kbd> Flap</span>
         <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">P</kbd> Pause</span>
@@ -138,67 +173,67 @@
 
     </div>
 
-    <!-- Bottom Score Stats Bar -->
-    <footer class="border-t border-slate-800 px-3.5 py-2 bg-slate-900 text-xs text-slate-400 flex items-center justify-between flex-shrink-0 safe-bottom">
+    <!-- Bottom Score Stats Bar (Desktop only) -->
+    <footer class="hidden sm:flex border-t border-slate-800 px-3.5 py-2 bg-slate-900 text-xs text-slate-400 items-center justify-between flex-shrink-0">
       <div class="flex items-center gap-3">
         <span>🏆 High: <strong id="globalHighScore" class="text-emerald-400 font-mono">0</strong></span>
         <span>🎮 Plays: <strong id="globalGamesPlayed" class="text-slate-200 font-mono">0</strong></span>
       </div>
-      <span class="text-[10px] text-slate-400">Tap ⚙️ to customize</span>
+      <span class="text-[10px] text-slate-400">Click ⚙️ to customize</span>
     </footer>
 
     <!-- ========================================================================= -->
-    <!-- SLICK MOBILE-OPTIMIZED TABBED SETTINGS OVERLAY -->
+    <!-- SLICK FULL-SCREEN TABBED SETTINGS OVERLAY -->
     <!-- ========================================================================= -->
-    <div id="settingsModal" class="absolute inset-0 z-30 bg-slate-900/98 backdrop-blur-md flex flex-col justify-between hidden opacity-0 transition-opacity duration-200 overflow-hidden safe-top safe-bottom">
+    <div id="settingsModal" class="absolute inset-0 z-30 bg-slate-900/98 backdrop-blur-md flex flex-col justify-between hidden opacity-0 transition-opacity duration-200 overflow-hidden safe-top safe-bottom safe-left safe-right">
       
       <!-- Modal Header -->
-      <div class="border-b border-slate-800 px-4 py-2.5 flex items-center justify-between bg-slate-900 flex-shrink-0">
-        <div class="flex items-center gap-2">
-          <span class="text-lg">⚙️</span>
+      <div class="border-b border-slate-800 px-4 py-3 flex items-center justify-between bg-slate-900 flex-shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">⚙️</span>
           <div>
             <h2 class="font-bold text-sm text-slate-100 leading-tight">Game Customizer</h2>
             <p class="text-[10px] text-slate-400">Switch characters, size, sounds & physics</p>
           </div>
         </div>
-        <button id="closeSettingsBtn" class="w-8 h-8 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 active:scale-95 hover:text-slate-100 hover:bg-slate-700 flex items-center justify-center text-sm transition">
+        <button id="closeSettingsBtn" class="w-9 h-9 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 active:scale-95 hover:text-slate-100 hover:bg-slate-700 flex items-center justify-center text-base transition">
           ✕
         </button>
       </div>
 
       <!-- Modal Tabs Navigation Bar -->
-      <div class="flex border-b border-slate-800 bg-slate-950/60 p-1.5 gap-1.5 flex-shrink-0">
-        <button data-tab="tab-visuals" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-center transition flex items-center justify-center gap-1 active:scale-95">
+      <div class="flex border-b border-slate-800 bg-slate-950/70 p-2 gap-1.5 flex-shrink-0">
+        <button data-tab="tab-visuals" class="tab-btn flex-1 py-2 px-2 rounded-xl text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-center transition flex items-center justify-center gap-1 active:scale-95">
           <span>👥</span> Characters
         </button>
-        <button data-tab="tab-audio" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent text-center transition flex items-center justify-center gap-1 active:scale-95">
+        <button data-tab="tab-audio" class="tab-btn flex-1 py-2 px-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent text-center transition flex items-center justify-center gap-1 active:scale-95">
           <span>🎧</span> Sounds
         </button>
-        <button data-tab="tab-physics" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent text-center transition flex items-center justify-center gap-1 active:scale-95">
+        <button data-tab="tab-physics" class="tab-btn flex-1 py-2 px-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent text-center transition flex items-center justify-center gap-1 active:scale-95">
           <span>⚡</span> Physics
         </button>
       </div>
 
       <!-- Tab Content Panels (Smooth Scrollable Container) -->
-      <div class="flex-1 overflow-y-auto p-3.5 space-y-3 bg-slate-900 text-slate-100 overscroll-contain">
+      <div class="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-900 text-slate-100 overscroll-contain">
 
         <!-- TAB 1: CHARACTERS & VISUALS -->
-        <div id="tab-visuals" class="tab-panel space-y-3">
+        <div id="tab-visuals" class="tab-panel space-y-3.5">
           
           <!-- Character Switching Grid -->
-          <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700">
-            <div class="flex items-center justify-between mb-2.5">
+          <div class="p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700">
+            <div class="flex items-center justify-between mb-3">
               <span class="font-semibold text-xs text-slate-200">Select Character</span>
-              <span id="charStatusTag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hero (Beanie)</span>
+              <span id="charStatusTag" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hero (Beanie)</span>
             </div>
 
             <!-- Responsive Character Grid Cards -->
-            <div class="grid grid-cols-2 gap-2 mb-2.5">
+            <div class="grid grid-cols-2 gap-2.5 mb-3">
               
               <!-- Option 1: Hero (Beanie) -->
               <button data-char="hero" class="char-select-btn p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative active:scale-95 shadow-sm shadow-emerald-500/20">
-                <div class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img src="bird.png" alt="Hero Bird" class="w-8 h-8 object-contain">
+                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="bird.png" alt="Hero Bird" class="w-9 h-9 object-contain">
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-xs font-bold text-slate-100 truncate">Hero Bird</div>
@@ -208,8 +243,8 @@
 
               <!-- Option 2: Harish -->
               <button data-char="harish" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95">
-                <div class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img src="harish.png" alt="Harish" class="w-8 h-8 object-contain">
+                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="harish.png" alt="Harish" class="w-9 h-9 object-contain">
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-xs font-bold text-slate-200 truncate">Harish</div>
@@ -219,8 +254,8 @@
 
               <!-- Option 3: Sanjay -->
               <button data-char="sanjay" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95">
-                <div class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img src="sanjay.png" alt="Sanjay" class="w-8 h-8 object-contain">
+                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="sanjay.png" alt="Sanjay" class="w-9 h-9 object-contain">
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-xs font-bold text-slate-200 truncate">Sanjay</div>
@@ -230,7 +265,7 @@
 
               <!-- Option 4: Classic 🐥 -->
               <button data-char="classic" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95">
-                <div class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-xl flex-shrink-0">
+                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-2xl flex-shrink-0">
                   🐥
                 </div>
                 <div class="min-w-0 flex-1">
@@ -242,16 +277,16 @@
               <!-- Option 5: Custom Upload (Full width) -->
               <button data-char="custom" id="customCharCard" class="char-select-btn col-span-2 p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center justify-between gap-2.5 relative active:scale-95">
                 <div class="flex items-center gap-2.5 min-w-0">
-                  <div id="customAvatarBox" class="w-10 h-10 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-lg flex-shrink-0 overflow-hidden">
-                    <img id="customCharThumb" src="" alt="Custom" class="w-8 h-8 object-contain hidden">
+                  <div id="customAvatarBox" class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
+                    <img id="customCharThumb" src="" alt="Custom" class="w-9 h-9 object-contain hidden">
                     <span id="customCharPlaceholder">➕</span>
                   </div>
                   <div class="min-w-0">
                     <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom Upload</div>
-                    <div id="customCharSub" class="text-[10px] text-slate-400 font-medium">Add your own image</div>
+                    <div id="customCharSub" class="text-[10px] text-slate-400 font-medium">Add your own picture</div>
                   </div>
                 </div>
-                <span class="text-[10px] text-slate-300 font-semibold active-badge bg-slate-700 px-2.5 py-1 rounded-lg">Upload</span>
+                <span class="text-[10px] text-slate-300 font-semibold active-badge bg-slate-700 px-3 py-1 rounded-lg">Upload</span>
               </button>
 
             </div>
@@ -264,7 +299,7 @@
                 <span class="text-slate-300 font-medium flex items-center gap-1"><span>🔍</span> Bird Image Size:</span>
                 <span id="birdScaleVal" class="font-mono font-bold text-emerald-400">Large (1.6x)</span>
               </div>
-              <input id="birdScaleSlider" type="range" min="0.8" max="2.6" step="0.1" value="1.6" class="w-full accent-emerald-500 cursor-pointer h-2 bg-slate-700 rounded-lg">
+              <input id="birdScaleSlider" type="range" min="0.8" max="2.6" step="0.1" value="1.6" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
               <div class="flex justify-between text-[9px] text-slate-500 mt-1">
                 <span>Small (0.8x)</span>
                 <span>Normal (1.0x)</span>
@@ -275,40 +310,40 @@
           </div>
 
           <!-- Sky & Pipe Themes -->
-          <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700">
-            <label class="block text-xs font-semibold text-slate-200 mb-2">Sky Atmosphere & Theme</label>
-            <div class="grid grid-cols-4 gap-1.5">
-              <button data-theme="day" class="theme-btn active py-2 rounded-lg text-xs font-semibold border border-emerald-500 bg-emerald-500/15 text-emerald-400 text-center active:scale-95">☀️ Day</button>
-              <button data-theme="sunset" class="theme-btn py-2 rounded-lg text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center active:scale-95">🌇 Sunset</button>
-              <button data-theme="night" class="theme-btn py-2 rounded-lg text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center active:scale-95">🌙 Night</button>
-              <button data-theme="cyber" class="theme-btn py-2 rounded-lg text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center active:scale-95">👾 Neon</button>
+          <div class="p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700">
+            <label class="block text-xs font-semibold text-slate-200 mb-2.5">Sky Atmosphere & Theme</label>
+            <div class="grid grid-cols-4 gap-2">
+              <button data-theme="day" class="theme-btn active py-2 rounded-xl text-xs font-semibold border border-emerald-500 bg-emerald-500/15 text-emerald-400 text-center active:scale-95">☀️ Day</button>
+              <button data-theme="sunset" class="theme-btn py-2 rounded-xl text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center active:scale-95">🌇 Sunset</button>
+              <button data-theme="night" class="theme-btn py-2 rounded-xl text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center active:scale-95">🌙 Night</button>
+              <button data-theme="cyber" class="theme-btn py-2 rounded-xl text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center active:scale-95">👾 Neon</button>
             </div>
           </div>
 
         </div>
 
         <!-- TAB 2: SOUND EFFECTS -->
-        <div id="tab-audio" class="tab-panel hidden space-y-2.5">
+        <div id="tab-audio" class="tab-panel hidden space-y-3">
           <div class="flex items-center justify-between text-[11px] text-slate-400">
             <span>Sound effects (MP4, M4A, MP3, WAV):</span>
-            <span class="text-[10px] text-emerald-400 font-mono bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/20">Custom Audio</span>
+            <span class="text-[10px] text-emerald-400 font-mono bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/20">Custom Audio</span>
           </div>
 
           <!-- Flap Audio -->
-          <div class="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="text-base">🪽</span>
+          <div class="p-3 rounded-2xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="text-lg">🪽</span>
               <div class="min-w-0">
                 <div class="text-xs font-semibold text-slate-200">Flap Sound</div>
                 <div id="flapSoundLabel" class="text-[10px] text-emerald-400 font-medium truncate">Default: flap.mp4</div>
               </div>
             </div>
             <div class="flex items-center gap-1.5 flex-shrink-0">
-              <button id="testFlapBtn" title="Test sound" class="p-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-700/50 hover:bg-slate-700 active:scale-95 text-xs text-slate-200">▶ Test</button>
-              <button id="uploadFlapBtn" type="button" class="p-1.5 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition shadow-sm">
+              <button id="testFlapBtn" title="Test sound" class="p-2 px-2.5 rounded-xl border border-slate-700 bg-slate-700/50 hover:bg-slate-700 active:scale-95 text-xs text-slate-200">▶ Test</button>
+              <button id="uploadFlapBtn" type="button" class="p-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition shadow-sm">
                 📁 Change
               </button>
-              <button id="clearFlapBtn" title="Reset to default flap.mp4" class="p-1.5 px-2 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-slate-200 active:scale-95 transition">
+              <button id="clearFlapBtn" title="Reset to default flap.mp4" class="p-2 px-2.5 rounded-xl border border-slate-700 text-xs text-slate-400 hover:text-slate-200 active:scale-95 transition">
                 ↺ Default
               </button>
               <input type="file" id="flapSoundInput" accept=".mp4,.m4a,.mp3,.wav,.ogg,.aac,.flac,.webm,audio/*,video/mp4" style="display:none">
@@ -316,20 +351,20 @@
           </div>
 
           <!-- Score Audio -->
-          <div class="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="text-base">⭐</span>
+          <div class="p-3 rounded-2xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="text-lg">⭐</span>
               <div class="min-w-0">
                 <div class="text-xs font-semibold text-slate-200">Score Ding</div>
                 <div id="scoreSoundLabel" class="text-[10px] text-slate-400 truncate">Synthesized Chime</div>
               </div>
             </div>
             <div class="flex items-center gap-1.5 flex-shrink-0">
-              <button id="testScoreBtn" title="Test sound" class="p-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-700/50 hover:bg-slate-700 active:scale-95 text-xs text-slate-200">▶ Test</button>
-              <button id="uploadScoreBtn" type="button" class="p-1.5 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition shadow-sm">
+              <button id="testScoreBtn" title="Test sound" class="p-2 px-2.5 rounded-xl border border-slate-700 bg-slate-700/50 hover:bg-slate-700 active:scale-95 text-xs text-slate-200">▶ Test</button>
+              <button id="uploadScoreBtn" type="button" class="p-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition shadow-sm">
                 📁 Change
               </button>
-              <button id="clearScoreBtn" title="Reset to synthesized chime" class="p-1.5 px-2 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-slate-200 active:scale-95 transition hidden">
+              <button id="clearScoreBtn" title="Reset to synthesized chime" class="p-2 px-2.5 rounded-xl border border-slate-700 text-xs text-slate-400 hover:text-slate-200 active:scale-95 transition hidden">
                 ↺ Synth
               </button>
               <input type="file" id="scoreSoundInput" accept=".mp4,.m4a,.mp3,.wav,.ogg,.aac,.flac,.webm,audio/*,video/mp4" style="display:none">
@@ -337,20 +372,20 @@
           </div>
 
           <!-- Crash Audio -->
-          <div class="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="text-base">💥</span>
+          <div class="p-3 rounded-2xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="text-lg">💥</span>
               <div class="min-w-0">
                 <div class="text-xs font-semibold text-slate-200">Crash Sound</div>
                 <div id="hitSoundLabel" class="text-[10px] text-emerald-400 font-medium truncate">Default: crashpoint.mp4</div>
               </div>
             </div>
             <div class="flex items-center gap-1.5 flex-shrink-0">
-              <button id="testHitBtn" title="Test sound" class="p-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-700/50 hover:bg-slate-700 active:scale-95 text-xs text-slate-200">▶ Test</button>
-              <button id="uploadHitBtn" type="button" class="p-1.5 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition shadow-sm">
+              <button id="testHitBtn" title="Test sound" class="p-2 px-2.5 rounded-xl border border-slate-700 bg-slate-700/50 hover:bg-slate-700 active:scale-95 text-xs text-slate-200">▶ Test</button>
+              <button id="uploadHitBtn" type="button" class="p-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition shadow-sm">
                 📁 Change
               </button>
-              <button id="clearHitBtn" title="Reset to default crashpoint.mp4" class="p-1.5 px-2 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-slate-200 active:scale-95 transition">
+              <button id="clearHitBtn" title="Reset to default crashpoint.mp4" class="p-2 px-2.5 rounded-xl border border-slate-700 text-xs text-slate-400 hover:text-slate-200 active:scale-95 transition">
                 ↺ Default
               </button>
               <input type="file" id="hitSoundInput" accept=".mp4,.m4a,.mp3,.wav,.ogg,.aac,.flac,.webm,audio/*,video/mp4" style="display:none">
@@ -359,40 +394,40 @@
         </div>
 
         <!-- TAB 3: PHYSICS & PRESETS -->
-        <div id="tab-physics" class="tab-panel hidden space-y-3">
+        <div id="tab-physics" class="tab-panel hidden space-y-3.5">
           
           <!-- Difficulty Presets Buttons -->
-          <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700">
-            <div class="flex items-center justify-between mb-2">
+          <div class="p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700">
+            <div class="flex items-center justify-between mb-2.5">
               <span class="text-xs font-semibold text-slate-200">Difficulty Preset</span>
               <span id="currentPresetTag" class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Classic Mode</span>
             </div>
             
             <div class="grid grid-cols-3 gap-2">
-              <button id="presetEasy" class="preset-btn py-2.5 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-0.5 active:scale-95">
-                <span class="text-sm">🌱</span>
+              <button id="presetEasy" class="preset-btn py-3 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-1 active:scale-95">
+                <span class="text-base">🌱</span>
                 <span>Easy</span>
               </button>
-              <button id="presetClassic" class="preset-btn py-2.5 px-2 rounded-xl text-xs font-bold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 text-center transition flex flex-col items-center gap-0.5 shadow-sm shadow-emerald-500/20 active:scale-95">
-                <span class="text-sm">⭐</span>
+              <button id="presetClassic" class="preset-btn py-3 px-2 rounded-xl text-xs font-bold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 text-center transition flex flex-col items-center gap-1 shadow-sm shadow-emerald-500/20 active:scale-95">
+                <span class="text-base">⭐</span>
                 <span>Classic</span>
               </button>
-              <button id="presetHard" class="preset-btn py-2.5 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-0.5 active:scale-95">
-                <span class="text-sm">🔥</span>
+              <button id="presetHard" class="preset-btn py-3 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-1 active:scale-95">
+                <span class="text-base">🔥</span>
                 <span>Hard</span>
               </button>
             </div>
-            <p id="presetDesc" class="text-[10px] text-slate-400 mt-2 text-center">Classic: Original Flappy Bird speed & gaps</p>
+            <p id="presetDesc" class="text-[10px] text-slate-400 mt-2.5 text-center">Classic: Original Flappy Bird speed & gaps</p>
           </div>
 
-          <!-- Sliders with larger touch sliders for mobile -->
-          <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700 space-y-3">
+          <!-- Sliders -->
+          <div class="p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700 space-y-3.5">
             <div>
               <div class="flex justify-between text-[11px] mb-1">
                 <span class="text-slate-400">Gravity</span>
                 <span id="gravityVal" class="font-mono font-medium text-emerald-400">0.28</span>
               </div>
-              <input id="gravitySlider" type="range" min="0.15" max="0.45" step="0.01" value="0.28" class="w-full accent-emerald-500 cursor-pointer h-2 bg-slate-700 rounded-lg">
+              <input id="gravitySlider" type="range" min="0.15" max="0.45" step="0.01" value="0.28" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
             </div>
 
             <div>
@@ -400,7 +435,7 @@
                 <span class="text-slate-400">Flap Jump Force</span>
                 <span id="jumpVal" class="font-mono font-medium text-emerald-400">-5.8</span>
               </div>
-              <input id="jumpSlider" type="range" min="4.0" max="8.0" step="0.1" value="5.8" class="w-full accent-emerald-500 cursor-pointer h-2 bg-slate-700 rounded-lg">
+              <input id="jumpSlider" type="range" min="4.0" max="8.0" step="0.1" value="5.8" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
             </div>
 
             <div>
@@ -408,7 +443,7 @@
                 <span class="text-slate-400">Pipe Gap Height</span>
                 <span id="gapVal" class="font-mono font-medium text-emerald-400">110px</span>
               </div>
-              <input id="gapSlider" type="range" min="80" max="160" step="5" value="110" class="w-full accent-emerald-500 cursor-pointer h-2 bg-slate-700 rounded-lg">
+              <input id="gapSlider" type="range" min="80" max="160" step="5" value="110" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
             </div>
 
             <div>
@@ -416,7 +451,7 @@
                 <span class="text-slate-400">Scroll Speed</span>
                 <span id="speedVal" class="font-mono font-medium text-emerald-400">2.0</span>
               </div>
-              <input id="speedSlider" type="range" min="1.0" max="4.5" step="0.2" value="2.0" class="w-full accent-emerald-500 cursor-pointer h-2 bg-slate-700 rounded-lg">
+              <input id="speedSlider" type="range" min="1.0" max="4.5" step="0.2" value="2.0" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
             </div>
           </div>
 
@@ -425,11 +460,11 @@
       </div>
 
       <!-- Modal Bottom Actions -->
-      <div class="border-t border-slate-800 px-4 py-2.5 bg-slate-900 flex items-center justify-between flex-shrink-0">
-        <button id="resetAssetsBtn" class="px-3 py-2 rounded-lg border border-slate-700 text-xs text-slate-400 active:scale-95 hover:text-slate-200 hover:bg-slate-800 transition">
+      <div class="border-t border-slate-800 px-4 py-3 bg-slate-900 flex items-center justify-between flex-shrink-0">
+        <button id="resetAssetsBtn" class="px-4 py-2.5 rounded-xl border border-slate-700 text-xs text-slate-400 active:scale-95 hover:text-slate-200 hover:bg-slate-800 transition">
           ↺ Reset All
         </button>
-        <button id="doneSettingsBtn" class="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold transition shadow-sm shadow-emerald-500/30">
+        <button id="doneSettingsBtn" class="px-7 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold transition shadow-lg shadow-emerald-500/30">
           Done / Play
         </button>
       </div>
@@ -501,7 +536,6 @@
       function preloadDefaultAudio(url, type) {
         try {
           if (window.location.protocol === 'file:') {
-            // Under file:// CORS blocks fetch, HTMLAudioElement will be used automatically
             return;
           }
           fetch(url)
@@ -734,10 +768,15 @@
       let frames = 0;
       let screenShake = 0;
 
-      const highScoreEl = document.getElementById('globalHighScore');
-      if (highScoreEl) highScoreEl.textContent = highScore;
-      const gamesPlayedEl = document.getElementById('globalGamesPlayed');
-      if (gamesPlayedEl) gamesPlayedEl.textContent = gamesPlayed;
+      function updateScoreDisplays() {
+        const hudHighScore = document.getElementById('hudHighScore');
+        if (hudHighScore) hudHighScore.textContent = highScore;
+        const highScoreEl = document.getElementById('globalHighScore');
+        if (highScoreEl) highScoreEl.textContent = highScore;
+        const gamesPlayedEl = document.getElementById('globalGamesPlayed');
+        if (gamesPlayedEl) gamesPlayedEl.textContent = gamesPlayed;
+      }
+      updateScoreDisplays();
 
       // --- CHARACTER ROSTER SYSTEM ---
       const heroBirdImg = new Image();
@@ -765,9 +804,15 @@
         const info = charInfo[activeCharKey];
         if (!info) return;
 
+        // Desktop header
         const headerAvatarImg = document.getElementById('headerAvatarImg');
         const headerAvatarEmoji = document.getElementById('headerAvatarEmoji');
         const customActiveBadge = document.getElementById('customActiveBadge');
+        
+        // Floating mobile HUD
+        const hudAvatarImg = document.getElementById('hudAvatarImg');
+        const hudAvatarEmoji = document.getElementById('hudAvatarEmoji');
+        const hudCharName = document.getElementById('hudCharName');
         const charStatusTag = document.getElementById('charStatusTag');
 
         if (info.isEmoji) {
@@ -776,15 +821,26 @@
             headerAvatarEmoji.classList.remove('hidden');
             headerAvatarEmoji.textContent = '🐥';
           }
+          if (hudAvatarImg) hudAvatarImg.classList.add('hidden');
+          if (hudAvatarEmoji) {
+            hudAvatarEmoji.classList.remove('hidden');
+            hudAvatarEmoji.textContent = '🐥';
+          }
         } else if (info.img && info.img.src) {
           if (headerAvatarImg) {
             headerAvatarImg.src = info.img.src;
             headerAvatarImg.classList.remove('hidden');
           }
           if (headerAvatarEmoji) headerAvatarEmoji.classList.add('hidden');
+          if (hudAvatarImg) {
+            hudAvatarImg.src = info.img.src;
+            hudAvatarImg.classList.remove('hidden');
+          }
+          if (hudAvatarEmoji) hudAvatarEmoji.classList.add('hidden');
         }
 
         if (customActiveBadge) customActiveBadge.textContent = info.shortName;
+        if (hudCharName) hudCharName.textContent = info.shortName;
         if (charStatusTag) charStatusTag.textContent = info.name;
 
         document.querySelectorAll('.char-select-btn').forEach(btn => {
@@ -1158,13 +1214,12 @@
 
         gamesPlayed++;
         localStorage.setItem('flappy_custom_games_count', gamesPlayed);
-        if (gamesPlayedEl) gamesPlayedEl.textContent = gamesPlayed;
 
         if (score > highScore) {
           highScore = score;
           localStorage.setItem('flappy_custom_highscore', highScore);
-          if (highScoreEl) highScoreEl.textContent = highScore;
         }
+        updateScoreDisplays();
 
         emitLiquid(bird.x, bird.y, 25, true);
 
@@ -1391,10 +1446,10 @@
           ctx.fillStyle = '#ffffff';
           ctx.strokeStyle = '#000000';
           ctx.lineWidth = 5;
-          ctx.font = '900 34px sans-serif';
+          ctx.font = '900 36px sans-serif';
           ctx.textAlign = 'center';
-          ctx.strokeText(`${score}`, canvas.width / 2, 50);
-          ctx.fillText(`${score}`, canvas.width / 2, 50);
+          ctx.strokeText(`${score}`, canvas.width / 2, 60);
+          ctx.fillText(`${score}`, canvas.width / 2, 60);
           ctx.restore();
 
         } else if (gameState === STATES.PAUSED) {
@@ -1526,28 +1581,26 @@
       }, { passive: false });
 
       function togglePause() {
-        const overlayPauseBtn = document.getElementById('overlayPauseBtn');
+        const hudPauseBtn = document.getElementById('hudPauseBtn');
         if (gameState === STATES.PLAYING) {
           gameState = STATES.PAUSED;
-          if (overlayPauseBtn) overlayPauseBtn.textContent = '▶';
+          if (hudPauseBtn) hudPauseBtn.textContent = '▶';
         } else if (gameState === STATES.PAUSED) {
           gameState = STATES.PLAYING;
-          if (overlayPauseBtn) overlayPauseBtn.textContent = '⏸';
+          if (hudPauseBtn) hudPauseBtn.textContent = '⏸';
         }
       }
 
-      const overlayPauseBtn = document.getElementById('overlayPauseBtn');
-      if (overlayPauseBtn) {
-        overlayPauseBtn.addEventListener('click', (e) => {
+      const hudPauseBtn = document.getElementById('hudPauseBtn');
+      if (hudPauseBtn) {
+        hudPauseBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           togglePause();
         });
       }
 
       // --- FULLSCREEN MODE CONTROLLER ---
-      const fullscreenBtn = document.getElementById('fullscreenBtn');
-      const fsIcon = document.getElementById('fsIcon');
-      const fsText = document.getElementById('fsText');
+      const fullscreenBtnDesktop = document.getElementById('fullscreenBtnDesktop');
 
       function isFullscreen() {
         return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
@@ -1567,18 +1620,19 @@
 
       function updateFullscreenUI() {
         const active = isFullscreen();
-        if (fsIcon) fsIcon.textContent = active ? '🗗' : '⛶';
-        if (fsText) fsText.textContent = active ? 'Exit' : 'Full';
+        document.querySelectorAll('.fsIconSpan').forEach(span => {
+          span.textContent = active ? '🗗' : '⛶';
+        });
       }
 
-      if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+      if (fullscreenBtnDesktop) fullscreenBtnDesktop.addEventListener('click', toggleFullscreen);
       document.addEventListener('fullscreenchange', updateFullscreenUI);
       document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
 
       // --- SETTINGS OVERLAY & TAB CONTROLLER ---
       const settingsModal = document.getElementById('settingsModal');
-      const openSettingsBtn = document.getElementById('openSettingsBtn');
-      const overlaySettingsBtn = document.getElementById('overlaySettingsBtn');
+      const hudSettingsBtn = document.getElementById('hudSettingsBtn');
+      const openSettingsBtnDesktop = document.getElementById('openSettingsBtnDesktop');
       const closeSettingsBtn = document.getElementById('closeSettingsBtn');
       const doneSettingsBtn = document.getElementById('doneSettingsBtn');
       let settingsOpen = false;
@@ -1609,13 +1663,13 @@
         }, 200);
       }
 
-      if (openSettingsBtn) openSettingsBtn.addEventListener('click', openSettings);
-      if (overlaySettingsBtn) {
-        overlaySettingsBtn.addEventListener('click', (e) => {
+      if (hudSettingsBtn) {
+        hudSettingsBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           openSettings();
         });
       }
+      if (openSettingsBtnDesktop) openSettingsBtnDesktop.addEventListener('click', openSettings);
       if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettings);
       if (doneSettingsBtn) doneSettingsBtn.addEventListener('click', closeSettings);
 
@@ -1883,17 +1937,21 @@
       });
 
       // 4. Audio Mute / Unmute
-      const toggleAudioBtn = document.getElementById('toggleAudioBtn');
-      const audioIcon = document.getElementById('audioIcon');
-
       function toggleAudio() {
         soundEnabled = !soundEnabled;
         if (!soundEnabled) {
           stopFlapSoundImmediately();
         }
-        if (audioIcon) audioIcon.textContent = soundEnabled ? '🔊' : '🔇';
+        document.querySelectorAll('.audioIconSpan').forEach(span => {
+          span.textContent = soundEnabled ? '🔊' : '🔇';
+        });
       }
-      if (toggleAudioBtn) toggleAudioBtn.addEventListener('click', toggleAudio);
+
+      const hudAudioBtn = document.getElementById('hudAudioBtn');
+      if (hudAudioBtn) hudAudioBtn.addEventListener('click', toggleAudio);
+
+      const toggleAudioBtnDesktop = document.getElementById('toggleAudioBtnDesktop');
+      if (toggleAudioBtnDesktop) toggleAudioBtnDesktop.addEventListener('click', toggleAudio);
 
       // 5. Theme Buttons
       document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -1957,9 +2015,9 @@
           const btn = btns[key];
           if (!btn) return;
           if (key === activeKey) {
-            btn.className = 'preset-btn py-2.5 px-2 rounded-xl text-xs font-bold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 text-center transition flex flex-col items-center gap-0.5 shadow-sm shadow-emerald-500/20 active:scale-95';
+            btn.className = 'preset-btn py-3 px-2 rounded-xl text-xs font-bold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 text-center transition flex flex-col items-center gap-1 shadow-sm shadow-emerald-500/20 active:scale-95';
           } else {
-            btn.className = 'preset-btn py-2.5 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-0.5 active:scale-95';
+            btn.className = 'preset-btn py-3 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-1 active:scale-95';
           }
         });
 
