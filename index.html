@@ -49,7 +49,6 @@
     .safe-left {
       padding-left: max(0.6rem, env(safe-area-inset-left));
     }
-    /* Fullscreen specifics */
     :fullscreen #mainWrapper, :-webkit-full-screen #mainWrapper {
       max-width: 100vw !important;
       width: 100vw !important;
@@ -131,36 +130,41 @@
         <!-- ======================================================= -->
         <!-- FLOATING OVERLAY: TOP LEFT BADGE & SCORE & AUTH -->
         <!-- ======================================================= -->
-        <div class="absolute top-0 left-0 safe-top safe-left p-3 z-20 flex flex-col gap-1.5 pointer-events-none">
-          <!-- Profile Badge -->
-          <div id="hudProfilePill" class="flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/15 text-white shadow-lg pointer-events-auto cursor-pointer active:scale-95 transition">
+        <div class="absolute top-0 left-0 safe-top safe-left p-2.5 z-20 flex flex-col gap-1.5 pointer-events-none">
+          <!-- Profile Badge (Tappable on mobile to open Auth) -->
+          <div id="hudProfilePill" title="Tap to Sign In / View Profile" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/75 backdrop-blur-md rounded-full border border-white/20 text-white shadow-lg pointer-events-auto cursor-pointer active:scale-95 transition">
             <div class="w-5 h-5 rounded-full bg-amber-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
               <img id="hudAvatarImg" src="bird.png" alt="Hero" class="w-4 h-4 object-contain">
               <span id="hudAvatarEmoji" class="text-xs hidden">🐥</span>
             </div>
-            <span id="hudCharName" class="text-[11px] font-bold text-slate-100 truncate max-w-[70px]">Guest</span>
+            <span id="hudCharName" class="text-[11px] font-bold text-slate-100 truncate max-w-[75px]">Login</span>
             <span class="text-slate-500 text-[10px]">•</span>
             <span class="text-[11px] font-mono text-emerald-400 font-bold">🏆 <span id="hudHighScore">0</span></span>
           </div>
         </div>
 
         <!-- ======================================================= -->
-        <!-- FLOATING OVERLAY: TOP RIGHT CONTROLS -->
+        <!-- FLOATING OVERLAY: TOP RIGHT CONTROLS (INCLUDES MOBILE LOGIN) -->
         <!-- ======================================================= -->
-        <div class="absolute top-0 right-0 safe-top safe-right p-3 z-20 flex items-center gap-1.5 pointer-events-auto">
+        <div class="absolute top-0 right-0 safe-top safe-right p-2.5 z-20 flex items-center gap-1.5 pointer-events-auto">
           
+          <!-- MOBILE SIGN UP / LOGIN BUTTON -->
+          <button id="hudAuthBtn" title="Account / Sign In" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-slate-900/85 hover:bg-slate-800 active:scale-90 backdrop-blur-md text-emerald-400 border border-emerald-500/40 text-sm flex items-center justify-center transition shadow-lg font-bold">
+            <span id="hudAuthIcon">👤</span>
+          </button>
+
           <!-- Leaderboard Toggle -->
           <button id="hudLeaderboardBtn" title="Global Leaderboard (L)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-amber-500/90 hover:bg-amber-500 active:scale-90 backdrop-blur-md text-slate-950 border border-amber-300/50 text-sm flex items-center justify-center transition shadow-lg shadow-amber-500/20 font-bold">
             🏆
           </button>
 
           <!-- Sound Toggle -->
-          <button id="hudAudioBtn" title="Toggle Sound (M)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-black/60 backdrop-blur-md text-white border border-white/20 text-sm flex items-center justify-center active:scale-90 hover:bg-black/80 transition shadow-lg">
+          <button id="hudAudioBtn" title="Toggle Sound (M)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-black/65 backdrop-blur-md text-white border border-white/20 text-sm flex items-center justify-center active:scale-90 hover:bg-black/80 transition shadow-lg">
             <span class="audioIconSpan">🔊</span>
           </button>
 
           <!-- Pause Toggle -->
-          <button id="hudPauseBtn" title="Pause Game (P)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-black/60 backdrop-blur-md text-white border border-white/20 text-xs flex items-center justify-center active:scale-90 hover:bg-black/80 transition shadow-lg">
+          <button id="hudPauseBtn" title="Pause Game (P)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-black/65 backdrop-blur-md text-white border border-white/20 text-xs flex items-center justify-center active:scale-90 hover:bg-black/80 transition shadow-lg">
             ⏸
           </button>
 
@@ -230,7 +234,7 @@
               <div class="text-[10px] text-emerald-400 font-mono mt-0.5">High Score: <strong id="loggedInScore">0</strong></div>
             </div>
           </div>
-          <button id="logoutBtn" class="w-full py-2 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold transition">
+          <button id="logoutBtn" class="w-full py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold transition">
             Log Out
           </button>
         </div>
@@ -258,16 +262,21 @@
               <input id="authPasswordInput" type="password" required minlength="6" placeholder="••••••••" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-sans">
             </div>
 
-            <div id="authMsg" class="text-[11px] font-medium hidden"></div>
+            <div id="authMsg" class="text-[11px] font-medium p-2.5 rounded-xl border border-transparent leading-relaxed hidden"></div>
 
             <button id="authSubmitBtn" type="submit" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold transition shadow-lg shadow-emerald-500/20">
               Sign In
             </button>
           </form>
 
+          <!-- Email Confirmation Help Box -->
+          <div id="emailConfirmNotice" class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300/90 leading-relaxed hidden">
+            💡 <strong>Email Confirmation Notice:</strong> If your Supabase requires email verification, click the link sent to your inbox. You can also turn off <em>"Confirm email"</em> in your Supabase Auth dashboard for instant logins.
+          </div>
+
           <div class="pt-2 border-t border-slate-800 text-center">
             <button id="guestPlayBtn" class="text-[11px] text-slate-400 hover:text-emerald-400 underline">
-              Continue as Guest (Scores saved locally)
+              Continue as Guest (Play without saving online)
             </button>
           </div>
         </div>
@@ -645,17 +654,8 @@
         return audioCtx;
       }
 
-      const customAudioBuffers = {
-        flap: null,
-        score: null,
-        hit: null
-      };
-
-      let customAudioElements = {
-        flap: null,
-        score: null,
-        hit: null
-      };
+      const customAudioBuffers = { flap: null, score: null, hit: null };
+      let customAudioElements = { flap: null, score: null, hit: null };
 
       try {
         customAudioElements.flap = new Audio('flap.mp4');
@@ -669,18 +669,12 @@
 
       function stopFlapSoundImmediately() {
         activeFlapSources.forEach(source => {
-          try {
-            source.stop(0);
-            source.disconnect();
-          } catch(e) {}
+          try { source.stop(0); source.disconnect(); } catch(e) {}
         });
         activeFlapSources = [];
 
         activeFlapElements.forEach(audio => {
-          try {
-            audio.pause();
-            audio.currentTime = 0;
-          } catch(e) {}
+          try { audio.pause(); audio.currentTime = 0; } catch(e) {}
         });
         activeFlapElements = [];
       }
@@ -734,9 +728,7 @@
               };
             } else if (type === 'hit') {
               isCrashPlaying = true;
-              source.onended = () => {
-                isCrashPlaying = false;
-              };
+              source.onended = () => { isCrashPlaying = false; };
             }
 
             source.start(0);
@@ -757,9 +749,7 @@
               };
             } else if (type === 'hit') {
               isCrashPlaying = true;
-              audio.onended = () => {
-                isCrashPlaying = false;
-              };
+              audio.onended = () => { isCrashPlaying = false; };
             }
 
             audio.play().catch(() => {});
@@ -972,7 +962,7 @@
         const charStatusTag = document.getElementById('charStatusTag');
         const loggedInAvatarImg = document.getElementById('loggedInAvatarImg');
 
-        const activeName = (currentProfile && currentProfile.username) ? currentProfile.username : info.shortName;
+        const activeName = (currentProfile && currentProfile.username) ? currentProfile.username : 'Login';
 
         if (info.isEmoji) {
           if (headerAvatarImg) headerAvatarImg.classList.add('hidden');
@@ -1369,7 +1359,6 @@
         const avatarUrl = (customCharImg && customCharImg.src) ? (customCharImg.src.startsWith('data:') ? null : customCharImg.src) : 'bird.png';
 
         try {
-          // Insert score into public leaderboard table
           await supabaseClient.from('leaderboard').insert([
             {
               user_id: currentUser ? currentUser.id : null,
@@ -1380,7 +1369,6 @@
             }
           ]);
 
-          // Update user high_score if logged in
           if (currentUser && finalScore > (currentProfile.high_score || 0)) {
             await supabaseClient
               .from('profiles')
@@ -1807,10 +1795,12 @@
       const authForm = document.getElementById('authForm');
       const authMsg = document.getElementById('authMsg');
       const authBtnDesktop = document.getElementById('authBtnDesktop');
+      const hudAuthBtn = document.getElementById('hudAuthBtn');
       const hudProfilePill = document.getElementById('hudProfilePill');
       const closeAuthBtn = document.getElementById('closeAuthBtn');
       const logoutBtn = document.getElementById('logoutBtn');
       const guestPlayBtn = document.getElementById('guestPlayBtn');
+      const emailConfirmNotice = document.getElementById('emailConfirmNotice');
       
       let isSignUpMode = false;
       let authModalOpen = false;
@@ -1833,7 +1823,8 @@
       }
 
       if (authBtnDesktop) authBtnDesktop.addEventListener('click', openAuthModal);
-      if (hudProfilePill) hudProfilePill.addEventListener('click', openAuthModal);
+      if (hudAuthBtn) hudAuthBtn.addEventListener('click', (e) => { e.stopPropagation(); openAuthModal(); });
+      if (hudProfilePill) hudProfilePill.addEventListener('click', (e) => { e.stopPropagation(); openAuthModal(); });
       if (closeAuthBtn) closeAuthBtn.addEventListener('click', closeAuthModal);
       if (guestPlayBtn) guestPlayBtn.addEventListener('click', closeAuthModal);
 
@@ -1845,12 +1836,14 @@
           usernameFieldWrapper.classList.remove('hidden');
           authSubmitBtn.textContent = 'Create Account & Play';
           document.getElementById('authModalTitle').textContent = 'Create Player Account';
+          if (emailConfirmNotice) emailConfirmNotice.classList.remove('hidden');
         } else {
           tabSignInBtn.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-emerald-500 text-white transition';
           tabSignUpBtn.className = 'flex-1 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition';
           usernameFieldWrapper.classList.add('hidden');
           authSubmitBtn.textContent = 'Sign In';
           document.getElementById('authModalTitle').textContent = 'Sign In to Profile';
+          if (emailConfirmNotice) emailConfirmNotice.classList.add('hidden');
         }
         if (authMsg) authMsg.classList.add('hidden');
       }
@@ -1895,6 +1888,13 @@
             document.getElementById('authTextDesktop').textContent = currentProfile.username;
             document.getElementById('userStatusSub').textContent = `Online: ${currentProfile.username}`;
             document.getElementById('footerUserLabel').textContent = currentProfile.username;
+            
+            // Update HUD Pill & Icon
+            const hudCharName = document.getElementById('hudCharName');
+            if (hudCharName) hudCharName.textContent = currentProfile.username;
+            const hudAuthIcon = document.getElementById('hudAuthIcon');
+            if (hudAuthIcon) hudAuthIcon.textContent = '🟢';
+
             updateCharacterUI();
           } else {
             currentUser = null;
@@ -1904,6 +1904,12 @@
             document.getElementById('authTextDesktop').textContent = 'Login';
             document.getElementById('userStatusSub').textContent = 'Guest Mode';
             document.getElementById('footerUserLabel').textContent = 'Guest';
+
+            const hudCharName = document.getElementById('hudCharName');
+            if (hudCharName) hudCharName.textContent = 'Login';
+            const hudAuthIcon = document.getElementById('hudAuthIcon');
+            if (hudAuthIcon) hudAuthIcon.textContent = '👤';
+
             updateCharacterUI();
           }
         } catch (e) {
@@ -1916,7 +1922,7 @@
           e.preventDefault();
           if (!supabaseClient) {
             authMsg.textContent = 'Supabase client is connecting...';
-            authMsg.className = 'text-[11px] font-medium text-amber-400';
+            authMsg.className = 'text-[11px] font-medium p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300';
             authMsg.classList.remove('hidden');
             return;
           }
@@ -1942,25 +1948,32 @@
 
               if (error) throw error;
 
-              // Insert initial profile record
-              if (data.user) {
-                await supabaseClient.from('profiles').insert([
-                  {
-                    id: data.user.id,
-                    username: username,
-                    high_score: highScore,
-                    avatar_url: 'bird.png'
-                  }
-                ]).select();
-              }
+              // If session created immediately (email confirmation disabled)
+              if (data.session) {
+                if (data.user) {
+                  await supabaseClient.from('profiles').upsert([
+                    {
+                      id: data.user.id,
+                      username: username,
+                      high_score: highScore,
+                      avatar_url: 'bird.png'
+                    }
+                  ]);
+                }
 
-              authMsg.textContent = 'Account created successfully!';
-              authMsg.className = 'text-[11px] font-medium text-emerald-400';
-              authMsg.classList.remove('hidden');
-              setTimeout(() => {
-                closeAuthModal();
-                refreshUserProfile();
-              }, 600);
+                authMsg.textContent = '🎉 Account created! Logging you in...';
+                authMsg.className = 'text-[11px] font-medium p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400';
+                authMsg.classList.remove('hidden');
+                setTimeout(() => {
+                  closeAuthModal();
+                  refreshUserProfile();
+                }, 600);
+              } else {
+                // Email confirmation is required by Supabase
+                authMsg.innerHTML = '✉️ <strong>Account Created!</strong> Please check your email inbox to verify your account.<br><br><span class="text-amber-300">Tip: To skip email verification, turn OFF <em>"Confirm email"</em> in your Supabase Auth Providers setting.</span>';
+                authMsg.className = 'text-[11px] font-medium p-2.5 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-300 leading-relaxed';
+                authMsg.classList.remove('hidden');
+              }
 
             } else {
               // Sign In
@@ -1969,10 +1982,15 @@
                 password
               });
 
-              if (error) throw error;
+              if (error) {
+                if (error.message.toLowerCase().includes('email not confirmed')) {
+                  throw new Error('⚠️ Email not confirmed! Click the link sent to your inbox, or disable "Confirm email" in Supabase Auth Providers.');
+                }
+                throw error;
+              }
 
-              authMsg.textContent = 'Welcome back!';
-              authMsg.className = 'text-[11px] font-medium text-emerald-400';
+              authMsg.textContent = '✓ Welcome back!';
+              authMsg.className = 'text-[11px] font-medium p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400';
               authMsg.classList.remove('hidden');
               setTimeout(() => {
                 closeAuthModal();
@@ -1981,7 +1999,7 @@
             }
           } catch (err) {
             authMsg.textContent = err.message || 'Authentication error';
-            authMsg.className = 'text-[11px] font-medium text-red-400';
+            authMsg.className = 'text-[11px] font-medium p-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400';
             authMsg.classList.remove('hidden');
           } finally {
             authSubmitBtn.disabled = false;
@@ -2192,6 +2210,8 @@
           togglePause();
         } else if (e.key === 'l' || e.key === 'L') {
           openLeaderboard();
+        } else if (e.key === 'u' || e.key === 'U') {
+          openAuthModal();
         } else if (e.key === 'm' || e.key === 'M') {
           toggleAudio();
         }
