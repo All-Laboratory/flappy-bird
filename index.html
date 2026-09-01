@@ -315,7 +315,7 @@
         <!-- Leaderboard Footer -->
         <div class="border-t border-slate-800 px-4 py-2.5 bg-slate-900/90 flex items-center justify-between flex-shrink-0">
           <button id="refreshLeaderboardBtn" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-semibold">
-            <span>🔄 Refresh</span>
+            <span>🔄 Refresh & Sync</span>
           </button>
           <span class="text-[10px] text-slate-400">Scores auto-save on Game Over</span>
         </div>
@@ -1359,18 +1359,24 @@
       }
 
       // --- RESILIENT LEADERBOARD SUBMISSION & CACHING ---
-      function saveLocalScore(username, scoreVal, charName, avatarUrl) {
+      function saveLocalScore(username, scoreVal, charName, avatarUrl, userId) {
         try {
           const raw = localStorage.getItem('flappy_local_leaderboard');
-          const list = raw ? JSON.parse(raw) : [];
+          let list = raw ? JSON.parse(raw) : [];
+          
+          // Remove duplicate lower entry for this username if any
+          list = list.filter(item => item.username !== username || item.score > scoreVal);
+          
           list.push({
             id: Date.now(),
+            user_id: userId || null,
             username: username || 'Player',
             score: scoreVal,
             character_name: charName || 'Hero',
             avatar_url: avatarUrl || 'bird.png',
             created_at: new Date().toISOString()
           });
+
           // Sort descending and keep top 25
           list.sort((a, b) => b.score - a.score);
           const topList = list.slice(0, 25);
@@ -1379,9 +1385,9 @@
       }
 
       async function submitScoreToSupabase(finalScore) {
-        if (finalScore <= 0) return;
+        if (finalScore === undefined || finalScore === null) return;
 
-        const playerName = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? currentUser.email.split('@')[0] : 'Guest');
+        const playerName = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? (currentUser.user_metadata?.username || currentUser.email.split('@')[0]) : 'Guest');
         const charName = charInfo[activeCharKey] ? charInfo[activeCharKey].name : 'Hero';
         
         let avatarUrl = 'bird.png';
@@ -1390,11 +1396,11 @@
         }
 
         // 1. Always save to local scoreboard cache immediately
-        saveLocalScore(playerName, finalScore, charName, avatarUrl);
+        saveLocalScore(playerName, finalScore, charName, avatarUrl, currentUser ? currentUser.id : null);
 
         // Show Score Saved Toast
         const toast = document.getElementById('scoreSavedToast');
-        if (toast) {
+        if (toast && finalScore > 0) {
           toast.style.opacity = '1';
           setTimeout(() => { toast.style.opacity = '0'; }, 2200);
         }
@@ -1413,21 +1419,26 @@
                 high_score: Math.max(finalScore, (currentProfile ? currentProfile.high_score || 0 : 0))
               }
             ]);
+            if (currentProfile) {
+              currentProfile.high_score = Math.max(finalScore, currentProfile.high_score || 0);
+            }
           }
 
-          // B. Insert into leaderboard table
-          const { error } = await supabaseClient.from('leaderboard').insert([
-            {
-              user_id: currentUser ? currentUser.id : null,
-              username: playerName,
-              score: finalScore,
-              character_name: charName,
-              avatar_url: avatarUrl
-            }
-          ]);
+          // B. Insert into leaderboard table if score > 0
+          if (finalScore > 0) {
+            const { error } = await supabaseClient.from('leaderboard').insert([
+              {
+                user_id: currentUser ? currentUser.id : null,
+                username: playerName,
+                score: finalScore,
+                character_name: charName,
+                avatar_url: avatarUrl
+              }
+            ]);
 
-          if (error) {
-            console.warn("Supabase leaderboard insert notice:", error.message);
+            if (error) {
+              console.warn("Supabase leaderboard insert notice:", error.message);
+            }
           }
         } catch (err) {
           console.warn("Could not save score to Supabase:", err);
@@ -1965,6 +1976,8 @@
                 highScore = profile.high_score;
                 localStorage.setItem('flappy_custom_highscore', highScore);
                 updateScoreDisplays();
+              } else if (highScore > (profile.high_score || 0)) {
+                submitScoreToSupabase(highScore);
               }
 
               // Load saved custom character from profile or local cache
@@ -1980,7 +1993,11 @@
                 username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
                 high_score: highScore
               };
+              submitScoreToSupabase(highScore);
             }
+
+            // Sync user's score to local leaderboard too
+            saveLocalScore(currentProfile.username, highScore, charInfo[activeCharKey]?.name || 'Hero', charInfo[activeCharKey]?.thumb || 'bird.png', currentUser.id);
 
             // Update UI
             document.getElementById('authLoggedInView').classList.remove('hidden');
@@ -2081,6 +2098,7 @@
                 setTimeout(() => {
                   closeAuthModal();
                   refreshUserProfile();
+                  submitScoreToSupabase(highScore);
                 }, 600);
               } else {
                 authMsg.innerHTML = '✉️ <strong>Account Created!</strong> Please check your email inbox to verify your account.<br><br><span class="text-amber-300">Tip: To skip email verification, turn OFF <em>"Confirm email"</em> in your Supabase Auth Providers setting.</span>';
@@ -2108,6 +2126,7 @@
               setTimeout(() => {
                 closeAuthModal();
                 refreshUserProfile();
+                submitScoreToSupabase(highScore);
               }, 500);
             }
           } catch (err) {
@@ -2143,12 +2162,32 @@
       function renderScoresList(scores, isLocalFallback) {
         if (!leaderboardList) return;
 
-        if (!scores || scores.length === 0) {
+        // Current active username
+        const currentActiveUsername = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? currentUser.email.split('@')[0] : null);
+
+        // Ensure current user is in the list if they have a high score
+        let listToRender = [...(scores || [])];
+        if (currentActiveUsername && highScore > 0) {
+          const userFound = listToRender.some(entry => entry.username === currentActiveUsername || (currentUser && entry.user_id === currentUser.id));
+          if (!userFound) {
+            listToRender.push({
+              id: 'my-current-score',
+              user_id: currentUser ? currentUser.id : null,
+              username: currentActiveUsername,
+              score: highScore,
+              character_name: charInfo[activeCharKey]?.name || 'Hero',
+              avatar_url: charInfo[activeCharKey]?.thumb || 'bird.png'
+            });
+            listToRender.sort((a, b) => b.score - a.score);
+          }
+        }
+
+        if (listToRender.length === 0) {
           leaderboardList.innerHTML = `
             <div class="text-center py-8 px-4 space-y-2">
               <span class="text-3xl">🎮</span>
-              <div class="text-xs font-bold text-slate-300">Be the First on the Board!</div>
-              <div class="text-[11px] text-slate-400">Play a round to record your high score.</div>
+              <div class="text-xs font-bold text-slate-300">No Scores Recorded Yet</div>
+              <div class="text-[11px] text-slate-400">Play a round to record your high score on the board!</div>
             </div>
           `;
           return;
@@ -2158,25 +2197,27 @@
         if (isLocalFallback) {
           html += `
             <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300 text-center mb-2">
-              📱 Showing Local Device High Scores (Run Supabase SQL for global sync)
+              📱 Showing Local Device Scores (Run Supabase SQL for global sync)
             </div>
           `;
         }
 
-        scores.forEach((entry, index) => {
+        listToRender.forEach((entry, index) => {
           const rank = index + 1;
+          const isCurrentUser = currentActiveUsername && (entry.username === currentActiveUsername || (currentUser && entry.user_id === currentUser.id));
+
           let rankBadge = `<span class="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 font-mono text-xs font-bold flex items-center justify-center">${rank}</span>`;
-          let rankBorder = 'border-slate-800 bg-slate-800/50';
+          let rankBorder = isCurrentUser ? 'border-emerald-500/60 bg-emerald-500/15 shadow-sm shadow-emerald-500/20' : 'border-slate-800 bg-slate-800/50';
 
           if (rank === 1) {
             rankBadge = `<span class="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-300 font-bold text-sm flex items-center justify-center border border-amber-400/40">🥇</span>`;
-            rankBorder = 'border-amber-500/40 bg-amber-500/10 shadow-sm shadow-amber-500/10';
+            if (!isCurrentUser) rankBorder = 'border-amber-500/40 bg-amber-500/10 shadow-sm shadow-amber-500/10';
           } else if (rank === 2) {
             rankBadge = `<span class="w-7 h-7 rounded-xl bg-slate-400/20 text-slate-200 font-bold text-sm flex items-center justify-center border border-slate-300/40">🥈</span>`;
-            rankBorder = 'border-slate-400/30 bg-slate-400/5';
+            if (!isCurrentUser) rankBorder = 'border-slate-400/30 bg-slate-400/5';
           } else if (rank === 3) {
             rankBadge = `<span class="w-7 h-7 rounded-xl bg-amber-700/20 text-amber-500 font-bold text-sm flex items-center justify-center border border-amber-600/40">🥉</span>`;
-            rankBorder = 'border-amber-700/30 bg-amber-700/5';
+            if (!isCurrentUser) rankBorder = 'border-amber-700/30 bg-amber-700/5';
           }
 
           let avatarSrc = entry.avatar_url || 'bird.png';
@@ -2192,7 +2233,10 @@
                   <img src="${avatarSrc}" onerror="this.src='bird.png'" class="w-6 h-6 object-contain">
                 </div>
                 <div class="min-w-0">
-                  <div class="font-bold text-xs text-slate-100 truncate">${entry.username || 'Anonymous'}</div>
+                  <div class="font-bold text-xs ${isCurrentUser ? 'text-emerald-300' : 'text-slate-100'} truncate flex items-center gap-1">
+                    ${entry.username || 'Anonymous'}
+                    ${isCurrentUser ? '<span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold">You</span>' : ''}
+                  </div>
                   <div class="text-[10px] text-slate-400 truncate">${entry.character_name || 'Hero'}</div>
                 </div>
               </div>
@@ -2210,6 +2254,11 @@
       async function fetchAndRenderLeaderboard() {
         if (!leaderboardList) return;
         leaderboardList.innerHTML = '<div class="text-center py-8 text-xs text-slate-400 animate-pulse">Loading live scores...</div>';
+
+        // Auto-sync current user's score to Supabase and cache first
+        if (highScore > 0) {
+          submitScoreToSupabase(highScore);
+        }
 
         // Try fetching from Supabase
         if (supabaseClient) {
@@ -2239,7 +2288,7 @@
           }
         } catch(e) {}
 
-        // If completely empty
+        // If completely empty, render with current user
         renderScoresList([], false);
       }
 
