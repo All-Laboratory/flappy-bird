@@ -6,8 +6,10 @@
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Fly High</title>
+  <title>Fly High - Online Multiplayer & Leaderboard</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * {
       -webkit-tap-highlight-color: transparent;
@@ -71,10 +73,10 @@
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased flex items-center justify-center p-0 sm:p-3 overflow-hidden h-full w-full">
 
-  <!-- Main Game Frame (Edge-to-edge full screen on mobile, styled card on desktop) -->
+  <!-- Main Game Frame -->
   <div id="mainWrapper" class="w-full h-full sm:h-auto sm:max-h-[96vh] sm:max-w-md bg-slate-900 text-slate-100 sm:border border-slate-700/80 sm:rounded-2xl shadow-2xl overflow-hidden relative flex flex-col justify-between">
     
-    <!-- Top Action Header (Visible on Desktop / Tablets) -->
+    <!-- Top Action Header (Desktop / Tablets) -->
     <header class="hidden sm:flex border-b border-slate-800 px-3.5 py-2.5 items-center justify-between gap-2 bg-slate-900/95 backdrop-blur-md z-10 flex-shrink-0">
       <div class="flex items-center gap-2">
         <div id="headerAvatarBox" class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center overflow-hidden shadow-sm border border-amber-300/30 flex-shrink-0">
@@ -86,19 +88,26 @@
             Fly High
             <span id="customActiveBadge" class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex-shrink-0">Hero</span>
           </h1>
-          <p class="text-[10px] text-slate-400 truncate">Space / Click to fly</p>
+          <p id="userStatusSub" class="text-[10px] text-slate-400 truncate">Guest Mode</p>
         </div>
       </div>
 
       <!-- Desktop Header Controls -->
       <div class="flex items-center gap-1.5 flex-shrink-0">
-        <button id="toggleAudioBtnDesktop" title="Toggle Sound (M)" class="p-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs active:scale-95 hover:bg-slate-700 transition">
-          <span class="audioIconSpan">🔊</span>
+        <!-- Auth Button -->
+        <button id="authBtnDesktop" class="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-750 text-xs font-semibold transition flex items-center gap-1">
+          <span id="authIconDesktop">👤</span>
+          <span id="authTextDesktop">Login</span>
         </button>
 
-        <button id="fullscreenBtnDesktop" title="Full Screen Mode (F)" class="p-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs active:scale-95 hover:bg-slate-700 transition flex items-center gap-1">
-          <span class="fsIconSpan">⛶</span>
-          <span class="text-[11px]">Full</span>
+        <!-- Leaderboard Button -->
+        <button id="leaderboardBtnDesktop" title="Global Leaderboard" class="p-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition flex items-center gap-1">
+          <span>🏆</span>
+          <span class="text-[11px]">Ranks</span>
+        </button>
+
+        <button id="toggleAudioBtnDesktop" title="Toggle Sound (M)" class="p-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs active:scale-95 hover:bg-slate-700 transition">
+          <span class="audioIconSpan">🔊</span>
         </button>
 
         <button id="openSettingsBtnDesktop" class="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
@@ -111,7 +120,7 @@
     <!-- Game Screen Area (Edge-to-edge full mobile screen) -->
     <div id="gameWrapper" class="relative flex-1 w-full h-full flex flex-col items-center justify-center p-0 sm:p-3 bg-slate-950 select-none overflow-hidden touch-none">
       
-      <!-- Canvas Box: Fills 100% on Mobile, Aspect box on Desktop -->
+      <!-- Canvas Box -->
       <div id="gameContainer" class="relative w-full h-full sm:h-auto sm:max-w-[340px] sm:aspect-[9/13] sm:max-h-[460px] sm:rounded-xl overflow-hidden game-shadow sm:border border-slate-700/80 bg-sky-300 flex items-center justify-center">
         
         <canvas id="gameCanvas" width="340" height="460" class="w-full h-full block cursor-pointer touch-none object-fill"></canvas>
@@ -120,25 +129,31 @@
         <div id="flashEffect" class="absolute inset-0 bg-white pointer-events-none opacity-0 transition-opacity duration-150"></div>
 
         <!-- ======================================================= -->
-        <!-- FLOATING OVERLAY: TOP LEFT BADGE & SCORE -->
+        <!-- FLOATING OVERLAY: TOP LEFT BADGE & SCORE & AUTH -->
         <!-- ======================================================= -->
-        <div class="absolute top-0 left-0 safe-top safe-left p-3 z-20 flex items-center gap-2 pointer-events-none">
-          <div class="flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/15 text-white shadow-lg pointer-events-auto">
+        <div class="absolute top-0 left-0 safe-top safe-left p-3 z-20 flex flex-col gap-1.5 pointer-events-none">
+          <!-- Profile Badge -->
+          <div id="hudProfilePill" class="flex items-center gap-1.5 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/15 text-white shadow-lg pointer-events-auto cursor-pointer active:scale-95 transition">
             <div class="w-5 h-5 rounded-full bg-amber-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
               <img id="hudAvatarImg" src="bird.png" alt="Hero" class="w-4 h-4 object-contain">
               <span id="hudAvatarEmoji" class="text-xs hidden">🐥</span>
             </div>
-            <span id="hudCharName" class="text-[11px] font-bold text-slate-100 truncate max-w-[80px]">Hero</span>
+            <span id="hudCharName" class="text-[11px] font-bold text-slate-100 truncate max-w-[70px]">Guest</span>
             <span class="text-slate-500 text-[10px]">•</span>
             <span class="text-[11px] font-mono text-emerald-400 font-bold">🏆 <span id="hudHighScore">0</span></span>
           </div>
         </div>
 
         <!-- ======================================================= -->
-        <!-- FLOATING OVERLAY: TOP RIGHT CONTROLS (SETTINGS AT RIGHT TOP) -->
+        <!-- FLOATING OVERLAY: TOP RIGHT CONTROLS -->
         <!-- ======================================================= -->
-        <div class="absolute top-0 right-0 safe-top safe-right p-3 z-20 flex items-center gap-2 pointer-events-auto">
+        <div class="absolute top-0 right-0 safe-top safe-right p-3 z-20 flex items-center gap-1.5 pointer-events-auto">
           
+          <!-- Leaderboard Toggle -->
+          <button id="hudLeaderboardBtn" title="Global Leaderboard (L)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-amber-500/90 hover:bg-amber-500 active:scale-90 backdrop-blur-md text-slate-950 border border-amber-300/50 text-sm flex items-center justify-center transition shadow-lg shadow-amber-500/20 font-bold">
+            🏆
+          </button>
+
           <!-- Sound Toggle -->
           <button id="hudAudioBtn" title="Toggle Sound (M)" class="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-black/60 backdrop-blur-md text-white border border-white/20 text-sm flex items-center justify-center active:scale-90 hover:bg-black/80 transition shadow-lg">
             <span class="audioIconSpan">🔊</span>
@@ -167,7 +182,7 @@
       <div class="mt-1.5 hidden sm:flex items-center justify-between w-full max-w-[340px] text-[10px] text-slate-400 px-1">
         <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">Space</kbd> Flap</span>
         <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">P</kbd> Pause</span>
-        <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">F</kbd> Full</span>
+        <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">L</kbd> Ranks</span>
         <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">M</kbd> Sound</span>
       </div>
 
@@ -176,14 +191,126 @@
     <!-- Bottom Score Stats Bar (Desktop only) -->
     <footer class="hidden sm:flex border-t border-slate-800 px-3.5 py-2 bg-slate-900 text-xs text-slate-400 items-center justify-between flex-shrink-0">
       <div class="flex items-center gap-3">
-        <span>🏆 High: <strong id="globalHighScore" class="text-emerald-400 font-mono">0</strong></span>
+        <span>🏆 Global Best: <strong id="globalHighScore" class="text-emerald-400 font-mono">0</strong></span>
         <span>🎮 Plays: <strong id="globalGamesPlayed" class="text-slate-200 font-mono">0</strong></span>
       </div>
-      <span class="text-[10px] text-slate-400">Click ⚙️ to customize</span>
+      <div class="flex items-center gap-2">
+        <span id="footerUserLabel" class="text-[10px] text-slate-400">Guest</span>
+        <span class="text-[10px] text-emerald-400 font-mono">⚡ Supabase Connected</span>
+      </div>
     </footer>
 
     <!-- ========================================================================= -->
-    <!-- SLICK FULL-SCREEN TABBED SETTINGS OVERLAY -->
+    <!-- MODAL 1: AUTHENTICATION (SIGN IN / SIGN UP / GUEST) -->
+    <!-- ========================================================================= -->
+    <div id="authModal" class="absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+      <div class="w-full max-w-sm bg-slate-900 border border-slate-700/80 rounded-2xl p-5 shadow-2xl relative space-y-4">
+        
+        <!-- Modal Top Bar -->
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">👤</span>
+            <div>
+              <h2 id="authModalTitle" class="font-bold text-sm text-slate-100">Player Profile</h2>
+              <p class="text-[10px] text-slate-400">Save scores & custom characters online</p>
+            </div>
+          </div>
+          <button id="closeAuthBtn" class="w-7 h-7 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center text-xs">✕</button>
+        </div>
+
+        <!-- Logged In View -->
+        <div id="authLoggedInView" class="hidden space-y-3">
+          <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl overflow-hidden">
+              <img id="loggedInAvatarImg" src="bird.png" alt="Avatar" class="w-10 h-10 object-contain">
+            </div>
+            <div class="min-w-0 flex-1">
+              <div id="loggedInUsername" class="font-bold text-sm text-slate-100 truncate">Player</div>
+              <div id="loggedInEmail" class="text-[11px] text-slate-400 truncate">player@example.com</div>
+              <div class="text-[10px] text-emerald-400 font-mono mt-0.5">High Score: <strong id="loggedInScore">0</strong></div>
+            </div>
+          </div>
+          <button id="logoutBtn" class="w-full py-2 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold transition">
+            Log Out
+          </button>
+        </div>
+
+        <!-- Logged Out View (Tabs for Sign In & Sign Up) -->
+        <div id="authLoggedOutView" class="space-y-3">
+          <div class="flex border-b border-slate-800 bg-slate-950/60 p-1 gap-1 rounded-xl">
+            <button id="tabSignInBtn" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-emerald-500 text-white transition">Sign In</button>
+            <button id="tabSignUpBtn" class="flex-1 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition">Create Account</button>
+          </div>
+
+          <form id="authForm" class="space-y-2.5">
+            <div id="usernameFieldWrapper" class="hidden space-y-1">
+              <label class="text-[11px] font-semibold text-slate-300">Username / Player Name</label>
+              <input id="authUsernameInput" type="text" placeholder="e.g. SkylineChampion" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-sans">
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[11px] font-semibold text-slate-300">Email Address</label>
+              <input id="authEmailInput" type="email" required placeholder="you@example.com" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-sans">
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[11px] font-semibold text-slate-300">Password</label>
+              <input id="authPasswordInput" type="password" required minlength="6" placeholder="••••••••" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-sans">
+            </div>
+
+            <div id="authMsg" class="text-[11px] font-medium hidden"></div>
+
+            <button id="authSubmitBtn" type="submit" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold transition shadow-lg shadow-emerald-500/20">
+              Sign In
+            </button>
+          </form>
+
+          <div class="pt-2 border-t border-slate-800 text-center">
+            <button id="guestPlayBtn" class="text-[11px] text-slate-400 hover:text-emerald-400 underline">
+              Continue as Guest (Scores saved locally)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 2: LIVE GLOBAL LEADERBOARD -->
+    <!-- ========================================================================= -->
+    <div id="leaderboardModal" class="absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 hidden opacity-0 transition-opacity duration-200">
+      <div class="w-full max-w-sm max-h-[85vh] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        
+        <!-- Leaderboard Header -->
+        <div class="border-b border-slate-800 px-4 py-3 flex items-center justify-between bg-slate-900 flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🏆</span>
+            <div>
+              <h2 class="font-bold text-sm text-slate-100">Global Leaderboard</h2>
+              <p class="text-[10px] text-slate-400">Live Top Players on Supabase</p>
+            </div>
+          </div>
+          <button id="closeLeaderboardBtn" class="w-7 h-7 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center text-xs">✕</button>
+        </div>
+
+        <!-- Leaderboard Ranks List (Scrollable) -->
+        <div id="leaderboardList" class="flex-1 overflow-y-auto p-3 space-y-2">
+          <div class="text-center py-8 text-xs text-slate-400 animate-pulse">Loading global rankings...</div>
+        </div>
+
+        <!-- Leaderboard Footer -->
+        <div class="border-t border-slate-800 px-4 py-2.5 bg-slate-900/90 flex items-center justify-between flex-shrink-0">
+          <button id="refreshLeaderboardBtn" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1">
+            <span>🔄 Refresh</span>
+          </button>
+          <span class="text-[10px] text-slate-400">Play to climb ranks!</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 3: SLICK SETTINGS & CHARACTER CREATOR OVERLAY -->
     <!-- ========================================================================= -->
     <div id="settingsModal" class="absolute inset-0 z-30 bg-slate-900/98 backdrop-blur-md flex flex-col justify-between hidden opacity-0 transition-opacity duration-200 overflow-hidden safe-top safe-bottom safe-left safe-right">
       
@@ -214,7 +341,7 @@
         </button>
       </div>
 
-      <!-- Tab Content Panels (Smooth Scrollable Container) -->
+      <!-- Tab Content Panels -->
       <div class="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-900 text-slate-100 overscroll-contain">
 
         <!-- TAB 1: CHARACTERS & VISUALS -->
@@ -227,7 +354,7 @@
               <span id="charStatusTag" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hero (Beanie)</span>
             </div>
 
-            <!-- Responsive Character Grid Cards (2 cols) -->
+            <!-- Responsive Character Grid Cards -->
             <div class="grid grid-cols-2 gap-2.5 mb-3">
               
               <!-- Option 1: Hero (Beanie) -->
@@ -285,14 +412,14 @@
                 </div>
               </button>
 
-              <!-- Option 6: Custom Upload -->
+              <!-- Option 6: Custom Upload & Cloud Sync -->
               <button data-char="custom" id="customCharCard" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95">
                 <div id="customAvatarBox" class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
                   <img id="customCharThumb" src="" alt="Custom" class="w-9 h-9 object-contain hidden">
                   <span id="customCharPlaceholder">➕</span>
                 </div>
                 <div class="min-w-0 flex-1">
-                  <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom...</div>
+                  <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom Skin</div>
                   <div id="customCharSub" class="text-[10px] text-slate-400 font-medium active-badge">Upload</div>
                 </div>
               </button>
@@ -481,9 +608,26 @@
 
   </div>
 
-  <!-- Audio Context, Game Engine & Fullscreen Controller -->
+  <!-- Audio Context, Supabase Client & Game Engine -->
   <script>
     (() => {
+      // --- SUPABASE CLIENT CONFIGURATION ---
+      const SUPABASE_URL = "https://voqrmpaedogjpcgtqhao.supabase.co";
+      const SUPABASE_KEY = "sb_publishable_W1hy9AYHEf9zsJCcqqO6Yw_yvtUsaJy";
+      let supabaseClient = null;
+
+      try {
+        if (window.supabase) {
+          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+      } catch (e) {
+        console.warn("Supabase init error:", e);
+      }
+
+      // Current Auth State
+      let currentUser = null;
+      let currentProfile = null;
+
       // --- AUDIO SYSTEM ---
       let audioCtx = null;
       let soundEnabled = true;
@@ -543,9 +687,7 @@
 
       function preloadDefaultAudio(url, type) {
         try {
-          if (window.location.protocol === 'file:') {
-            return;
-          }
+          if (window.location.protocol === 'file:') return;
           fetch(url)
             .then(res => {
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -783,6 +925,8 @@
         if (highScoreEl) highScoreEl.textContent = highScore;
         const gamesPlayedEl = document.getElementById('globalGamesPlayed');
         if (gamesPlayedEl) gamesPlayedEl.textContent = gamesPlayed;
+        const loggedInScore = document.getElementById('loggedInScore');
+        if (loggedInScore) loggedInScore.textContent = highScore;
       }
       updateScoreDisplays();
 
@@ -826,6 +970,9 @@
         const hudAvatarEmoji = document.getElementById('hudAvatarEmoji');
         const hudCharName = document.getElementById('hudCharName');
         const charStatusTag = document.getElementById('charStatusTag');
+        const loggedInAvatarImg = document.getElementById('loggedInAvatarImg');
+
+        const activeName = (currentProfile && currentProfile.username) ? currentProfile.username : info.shortName;
 
         if (info.isEmoji) {
           if (headerAvatarImg) headerAvatarImg.classList.add('hidden');
@@ -849,10 +996,11 @@
             hudAvatarImg.classList.remove('hidden');
           }
           if (hudAvatarEmoji) hudAvatarEmoji.classList.add('hidden');
+          if (loggedInAvatarImg) loggedInAvatarImg.src = info.img.src;
         }
 
         if (customActiveBadge) customActiveBadge.textContent = info.shortName;
-        if (hudCharName) hudCharName.textContent = info.shortName;
+        if (hudCharName) hudCharName.textContent = activeName;
         if (charStatusTag) charStatusTag.textContent = info.name;
 
         document.querySelectorAll('.char-select-btn').forEach(btn => {
@@ -860,13 +1008,13 @@
           const badge = btn.querySelector('.active-badge');
 
           if (key === activeCharKey) {
-            btn.className = 'char-select-btn p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative active:scale-95 shadow-sm shadow-emerald-500/20';
+            btn.className = (key === 'custom' ? 'char-select-btn ' : 'char-select-btn ') + 'p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative active:scale-95 shadow-sm shadow-emerald-500/20';
             if (badge) {
               badge.textContent = '✓ Active';
               badge.className = 'text-[10px] text-emerald-400 font-bold active-badge';
             }
           } else {
-            btn.className = 'char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95';
+            btn.className = (key === 'custom' ? 'char-select-btn ' : 'char-select-btn ') + 'p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative active:scale-95';
             if (badge) {
               badge.textContent = key === 'custom' && !customUploadedImg ? 'Upload' : 'Select';
               badge.className = 'text-[10px] text-slate-400 font-medium active-badge';
@@ -1212,6 +1360,39 @@
         ctx.strokeRect(lipX, lipY, lipWidth, lipHeight);
       }
 
+      // --- SUPABASE LEADERBOARD SUBMISSION ---
+      async function submitScoreToSupabase(finalScore) {
+        if (!supabaseClient || finalScore <= 0) return;
+
+        const playerName = (currentProfile && currentProfile.username) ? currentProfile.username : 'Guest';
+        const charName = charInfo[activeCharKey] ? charInfo[activeCharKey].name : 'Hero';
+        const avatarUrl = (customCharImg && customCharImg.src) ? (customCharImg.src.startsWith('data:') ? null : customCharImg.src) : 'bird.png';
+
+        try {
+          // Insert score into public leaderboard table
+          await supabaseClient.from('leaderboard').insert([
+            {
+              user_id: currentUser ? currentUser.id : null,
+              username: playerName,
+              score: finalScore,
+              character_name: charName,
+              avatar_url: avatarUrl
+            }
+          ]);
+
+          // Update user high_score if logged in
+          if (currentUser && finalScore > (currentProfile.high_score || 0)) {
+            await supabaseClient
+              .from('profiles')
+              .update({ high_score: finalScore })
+              .eq('id', currentUser.id);
+            currentProfile.high_score = finalScore;
+          }
+        } catch (err) {
+          console.warn("Could not save score to Supabase:", err);
+        }
+      }
+
       function triggerGameOver() {
         if (gameState === STATES.GAMEOVER) return;
         gameState = STATES.GAMEOVER;
@@ -1234,6 +1415,9 @@
           localStorage.setItem('flappy_custom_highscore', highScore);
         }
         updateScoreDisplays();
+
+        // Submit score to cloud
+        submitScoreToSupabase(score);
 
         emitLiquid(bird.x, bird.y, 25, true);
 
@@ -1573,7 +1757,7 @@
 
       function handleAction() {
         getAudioContext();
-        if (settingsOpen) return;
+        if (settingsOpen || authModalOpen || leaderboardModalOpen) return;
 
         if (gameState === STATES.START) {
           gameState = STATES.PLAYING;
@@ -1587,7 +1771,6 @@
         }
       }
 
-      // Fast touch response without delay
       canvas.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1613,37 +1796,315 @@
         });
       }
 
-      // --- FULLSCREEN MODE CONTROLLER ---
-      const fullscreenBtnDesktop = document.getElementById('fullscreenBtnDesktop');
+      // --- SUPABASE AUTHENTICATION CONTROLLER ---
+      const authModal = document.getElementById('authModal');
+      const authLoggedInView = document.getElementById('authLoggedInView');
+      const authLoggedOutView = document.getElementById('authLoggedOutView');
+      const tabSignInBtn = document.getElementById('tabSignInBtn');
+      const tabSignUpBtn = document.getElementById('tabSignUpBtn');
+      const usernameFieldWrapper = document.getElementById('usernameFieldWrapper');
+      const authSubmitBtn = document.getElementById('authSubmitBtn');
+      const authForm = document.getElementById('authForm');
+      const authMsg = document.getElementById('authMsg');
+      const authBtnDesktop = document.getElementById('authBtnDesktop');
+      const hudProfilePill = document.getElementById('hudProfilePill');
+      const closeAuthBtn = document.getElementById('closeAuthBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const guestPlayBtn = document.getElementById('guestPlayBtn');
+      
+      let isSignUpMode = false;
+      let authModalOpen = false;
 
-      function isFullscreen() {
-        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
-      }
-
-      function toggleFullscreen() {
-        const elem = document.getElementById('mainWrapper');
-        if (!elem) return;
-        if (!isFullscreen()) {
-          if (elem.requestFullscreen) elem.requestFullscreen();
-          else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-        } else {
-          if (document.exitFullscreen) document.exitFullscreen();
-          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      function openAuthModal() {
+        authModalOpen = true;
+        if (gameState === STATES.PLAYING) gameState = STATES.PAUSED;
+        if (authModal) {
+          authModal.classList.remove('hidden');
+          setTimeout(() => authModal.classList.remove('opacity-0'), 10);
         }
       }
 
-      function updateFullscreenUI() {
-        const active = isFullscreen();
-        document.querySelectorAll('.fsIconSpan').forEach(span => {
-          span.textContent = active ? '🗗' : '⛶';
+      function closeAuthModal() {
+        authModalOpen = false;
+        if (authModal) {
+          authModal.classList.add('opacity-0');
+          setTimeout(() => authModal.classList.add('hidden'), 200);
+        }
+      }
+
+      if (authBtnDesktop) authBtnDesktop.addEventListener('click', openAuthModal);
+      if (hudProfilePill) hudProfilePill.addEventListener('click', openAuthModal);
+      if (closeAuthBtn) closeAuthBtn.addEventListener('click', closeAuthModal);
+      if (guestPlayBtn) guestPlayBtn.addEventListener('click', closeAuthModal);
+
+      function setAuthTab(signUp) {
+        isSignUpMode = signUp;
+        if (signUp) {
+          tabSignUpBtn.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-emerald-500 text-white transition';
+          tabSignInBtn.className = 'flex-1 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition';
+          usernameFieldWrapper.classList.remove('hidden');
+          authSubmitBtn.textContent = 'Create Account & Play';
+          document.getElementById('authModalTitle').textContent = 'Create Player Account';
+        } else {
+          tabSignInBtn.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-emerald-500 text-white transition';
+          tabSignUpBtn.className = 'flex-1 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition';
+          usernameFieldWrapper.classList.add('hidden');
+          authSubmitBtn.textContent = 'Sign In';
+          document.getElementById('authModalTitle').textContent = 'Sign In to Profile';
+        }
+        if (authMsg) authMsg.classList.add('hidden');
+      }
+
+      if (tabSignInBtn) tabSignInBtn.addEventListener('click', () => setAuthTab(false));
+      if (tabSignUpBtn) tabSignUpBtn.addEventListener('click', () => setAuthTab(true));
+
+      async function refreshUserProfile() {
+        if (!supabaseClient) return;
+
+        try {
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          if (session && session.user) {
+            currentUser = session.user;
+            
+            // Fetch profile
+            const { data: profile } = await supabaseClient
+              .from('profiles')
+              .select('*')
+              .eq('id', currentUser.id)
+              .single();
+
+            if (profile) {
+              currentProfile = profile;
+              if (profile.high_score && profile.high_score > highScore) {
+                highScore = profile.high_score;
+                localStorage.setItem('flappy_custom_highscore', highScore);
+                updateScoreDisplays();
+              }
+            } else {
+              currentProfile = {
+                username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
+                high_score: highScore
+              };
+            }
+
+            // Update UI
+            document.getElementById('authLoggedInView').classList.remove('hidden');
+            document.getElementById('authLoggedOutView').classList.add('hidden');
+            document.getElementById('loggedInUsername').textContent = currentProfile.username;
+            document.getElementById('loggedInEmail').textContent = currentUser.email;
+            document.getElementById('authTextDesktop').textContent = currentProfile.username;
+            document.getElementById('userStatusSub').textContent = `Online: ${currentProfile.username}`;
+            document.getElementById('footerUserLabel').textContent = currentProfile.username;
+            updateCharacterUI();
+          } else {
+            currentUser = null;
+            currentProfile = null;
+            document.getElementById('authLoggedInView').classList.add('hidden');
+            document.getElementById('authLoggedOutView').classList.remove('hidden');
+            document.getElementById('authTextDesktop').textContent = 'Login';
+            document.getElementById('userStatusSub').textContent = 'Guest Mode';
+            document.getElementById('footerUserLabel').textContent = 'Guest';
+            updateCharacterUI();
+          }
+        } catch (e) {
+          console.warn("Auth status check:", e);
+        }
+      }
+
+      if (authForm) {
+        authForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!supabaseClient) {
+            authMsg.textContent = 'Supabase client is connecting...';
+            authMsg.className = 'text-[11px] font-medium text-amber-400';
+            authMsg.classList.remove('hidden');
+            return;
+          }
+
+          const email = document.getElementById('authEmailInput').value.trim();
+          const password = document.getElementById('authPasswordInput').value;
+          const username = document.getElementById('authUsernameInput').value.trim() || email.split('@')[0];
+
+          authSubmitBtn.disabled = true;
+          authSubmitBtn.textContent = 'Connecting...';
+          authMsg.classList.add('hidden');
+
+          try {
+            if (isSignUpMode) {
+              // Sign Up
+              const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: {
+                  data: { username: username }
+                }
+              });
+
+              if (error) throw error;
+
+              // Insert initial profile record
+              if (data.user) {
+                await supabaseClient.from('profiles').insert([
+                  {
+                    id: data.user.id,
+                    username: username,
+                    high_score: highScore,
+                    avatar_url: 'bird.png'
+                  }
+                ]).select();
+              }
+
+              authMsg.textContent = 'Account created successfully!';
+              authMsg.className = 'text-[11px] font-medium text-emerald-400';
+              authMsg.classList.remove('hidden');
+              setTimeout(() => {
+                closeAuthModal();
+                refreshUserProfile();
+              }, 600);
+
+            } else {
+              // Sign In
+              const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+              });
+
+              if (error) throw error;
+
+              authMsg.textContent = 'Welcome back!';
+              authMsg.className = 'text-[11px] font-medium text-emerald-400';
+              authMsg.classList.remove('hidden');
+              setTimeout(() => {
+                closeAuthModal();
+                refreshUserProfile();
+              }, 500);
+            }
+          } catch (err) {
+            authMsg.textContent = err.message || 'Authentication error';
+            authMsg.className = 'text-[11px] font-medium text-red-400';
+            authMsg.classList.remove('hidden');
+          } finally {
+            authSubmitBtn.disabled = false;
+            authSubmitBtn.textContent = isSignUpMode ? 'Create Account & Play' : 'Sign In';
+          }
         });
       }
 
-      if (fullscreenBtnDesktop) fullscreenBtnDesktop.addEventListener('click', toggleFullscreen);
-      document.addEventListener('fullscreenchange', updateFullscreenUI);
-      document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+          if (supabaseClient) {
+            await supabaseClient.auth.signOut();
+            refreshUserProfile();
+            closeAuthModal();
+          }
+        });
+      }
 
-      // --- SETTINGS OVERLAY & TAB CONTROLLER ---
+      // --- GLOBAL LEADERBOARD MODAL CONTROLLER ---
+      const leaderboardModal = document.getElementById('leaderboardModal');
+      const leaderboardList = document.getElementById('leaderboardList');
+      const hudLeaderboardBtn = document.getElementById('hudLeaderboardBtn');
+      const leaderboardBtnDesktop = document.getElementById('leaderboardBtnDesktop');
+      const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+      const refreshLeaderboardBtn = document.getElementById('refreshLeaderboardBtn');
+      let leaderboardModalOpen = false;
+
+      async function fetchAndRenderLeaderboard() {
+        if (!leaderboardList) return;
+        leaderboardList.innerHTML = '<div class="text-center py-8 text-xs text-slate-400 animate-pulse">Loading live scores...</div>';
+
+        if (!supabaseClient) {
+          leaderboardList.innerHTML = '<div class="text-center py-6 text-xs text-amber-400">Offline mode: connect to internet for live ranks.</div>';
+          return;
+        }
+
+        try {
+          const { data: scores, error } = await supabaseClient
+            .from('leaderboard')
+            .select('*')
+            .order('score', { ascending: false })
+            .limit(20);
+
+          if (error || !scores || scores.length === 0) {
+            leaderboardList.innerHTML = `
+              <div class="text-center py-8 px-4 space-y-2">
+                <span class="text-3xl">🎮</span>
+                <div class="text-xs font-bold text-slate-300">Be the First on the Board!</div>
+                <div class="text-[11px] text-slate-400">Play a round to record your high score.</div>
+              </div>
+            `;
+            return;
+          }
+
+          let html = '';
+          scores.forEach((entry, index) => {
+            const rank = index + 1;
+            let rankBadge = `<span class="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 font-mono text-xs font-bold flex items-center justify-center">${rank}</span>`;
+            let rankBorder = 'border-slate-800 bg-slate-800/50';
+
+            if (rank === 1) {
+              rankBadge = `<span class="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-300 font-bold text-sm flex items-center justify-center border border-amber-400/40">🥇</span>`;
+              rankBorder = 'border-amber-500/40 bg-amber-500/10 shadow-sm shadow-amber-500/10';
+            } else if (rank === 2) {
+              rankBadge = `<span class="w-7 h-7 rounded-xl bg-slate-400/20 text-slate-200 font-bold text-sm flex items-center justify-center border border-slate-300/40">🥈</span>`;
+              rankBorder = 'border-slate-400/30 bg-slate-400/5';
+            } else if (rank === 3) {
+              rankBadge = `<span class="w-7 h-7 rounded-xl bg-amber-700/20 text-amber-500 font-bold text-sm flex items-center justify-center border border-amber-600/40">🥉</span>`;
+              rankBorder = 'border-amber-700/30 bg-amber-700/5';
+            }
+
+            const avatarSrc = entry.avatar_url || 'bird.png';
+
+            html += `
+              <div class="p-2.5 rounded-xl border ${rankBorder} flex items-center justify-between gap-2.5 transition">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  ${rankBadge}
+                  <div class="w-8 h-8 rounded-lg bg-slate-950/80 border border-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img src="${avatarSrc}" onerror="this.src='bird.png'" class="w-6 h-6 object-contain">
+                  </div>
+                  <div class="min-w-0">
+                    <div class="font-bold text-xs text-slate-100 truncate">${entry.username || 'Anonymous'}</div>
+                    <div class="text-[10px] text-slate-400 truncate">${entry.character_name || 'Hero'}</div>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="font-mono font-black text-sm text-emerald-400">${entry.score}</div>
+                  <div class="text-[9px] text-slate-500">PTS</div>
+                </div>
+              </div>
+            `;
+          });
+
+          leaderboardList.innerHTML = html;
+        } catch (err) {
+          leaderboardList.innerHTML = '<div class="text-center py-6 text-xs text-red-400">Failed to load ranks.</div>';
+        }
+      }
+
+      function openLeaderboard() {
+        leaderboardModalOpen = true;
+        if (gameState === STATES.PLAYING) gameState = STATES.PAUSED;
+        if (leaderboardModal) {
+          leaderboardModal.classList.remove('hidden');
+          setTimeout(() => leaderboardModal.classList.remove('opacity-0'), 10);
+        }
+        fetchAndRenderLeaderboard();
+      }
+
+      function closeLeaderboard() {
+        leaderboardModalOpen = false;
+        if (leaderboardModal) {
+          leaderboardModal.classList.add('opacity-0');
+          setTimeout(() => leaderboardModal.classList.add('hidden'), 200);
+        }
+      }
+
+      if (hudLeaderboardBtn) hudLeaderboardBtn.addEventListener('click', openLeaderboard);
+      if (leaderboardBtnDesktop) leaderboardBtnDesktop.addEventListener('click', openLeaderboard);
+      if (closeLeaderboardBtn) closeLeaderboardBtn.addEventListener('click', closeLeaderboard);
+      if (refreshLeaderboardBtn) refreshLeaderboardBtn.addEventListener('click', fetchAndRenderLeaderboard);
+
+      // --- FULLSCREEN & SETTINGS OVERLAY ---
       const settingsModal = document.getElementById('settingsModal');
       const hudSettingsBtn = document.getElementById('hudSettingsBtn');
       const openSettingsBtnDesktop = document.getElementById('openSettingsBtnDesktop');
@@ -1663,26 +2124,17 @@
           prevGameState = gameState;
         }
         settingsModal.classList.remove('hidden');
-        setTimeout(() => {
-          settingsModal.classList.remove('opacity-0');
-        }, 10);
+        setTimeout(() => settingsModal.classList.remove('opacity-0'), 10);
       }
 
       function closeSettings() {
         if (!settingsModal) return;
         settingsOpen = false;
         settingsModal.classList.add('opacity-0');
-        setTimeout(() => {
-          settingsModal.classList.add('hidden');
-        }, 200);
+        setTimeout(() => settingsModal.classList.add('hidden'), 200);
       }
 
-      if (hudSettingsBtn) {
-        hudSettingsBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          openSettings();
-        });
-      }
+      if (hudSettingsBtn) hudSettingsBtn.addEventListener('click', (e) => { e.stopPropagation(); openSettings(); });
       if (openSettingsBtnDesktop) openSettingsBtnDesktop.addEventListener('click', openSettings);
       if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettings);
       if (doneSettingsBtn) doneSettingsBtn.addEventListener('click', closeSettings);
@@ -1727,8 +2179,10 @@
 
       // Keyboard support
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && settingsOpen) {
-          closeSettings();
+        if (e.key === 'Escape') {
+          if (authModalOpen) closeAuthModal();
+          if (leaderboardModalOpen) closeLeaderboard();
+          if (settingsOpen) closeSettings();
           return;
         }
         if (e.code === 'Space' || e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
@@ -1736,82 +2190,14 @@
           handleAction();
         } else if (e.key === 'p' || e.key === 'P') {
           togglePause();
-        } else if (e.key === 'f' || e.key === 'F') {
-          toggleFullscreen();
+        } else if (e.key === 'l' || e.key === 'L') {
+          openLeaderboard();
         } else if (e.key === 'm' || e.key === 'M') {
           toggleAudio();
         }
       });
 
-      // --- CUSTOM ASSET UPLOAD LOGIC ---
-      function isAudioFile(file) {
-        if (!file) return false;
-        const name = file.name ? file.name.toLowerCase() : '';
-        const ext = name.split('.').pop();
-        const audioExtensions = ['mp4', 'm4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'webm', 'opus', 'caf'];
-        return (file.type && file.type.startsWith('audio/')) || file.type === 'video/mp4' || audioExtensions.includes(ext);
-      }
-
-      function loadAudioFile(file, type, labelElement, clearBtn) {
-        if (!file) return;
-        const ctx = getAudioContext();
-        
-        if (labelElement) {
-          labelElement.textContent = `Loading ${file.name.substring(0, 14)}...`;
-          labelElement.className = 'text-[10px] text-amber-400 font-medium truncate';
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const arrayBuffer = e.target.result;
-          
-          if (ctx && ctx.decodeAudioData) {
-            ctx.decodeAudioData(arrayBuffer.slice(0), (decoded) => {
-              customAudioBuffers[type] = decoded;
-              customAudioElements[type] = null;
-              if (labelElement) {
-                labelElement.textContent = `Custom: ${file.name.substring(0, 14)}`;
-                labelElement.className = 'text-[10px] text-emerald-400 font-medium truncate';
-              }
-              if (clearBtn) clearBtn.classList.remove('hidden');
-              playSound(type);
-            }, () => {
-              setupHtmlAudioElement(file, type, labelElement, clearBtn);
-            });
-          } else {
-            setupHtmlAudioElement(file, type, labelElement, clearBtn);
-          }
-        };
-
-        reader.onerror = function() {
-          setupHtmlAudioElement(file, type, labelElement, clearBtn);
-        };
-
-        reader.readAsArrayBuffer(file);
-      }
-
-      function setupHtmlAudioElement(file, type, labelElement, clearBtn) {
-        try {
-          const url = URL.createObjectURL(file);
-          const audio = new Audio(url);
-          audio.preload = 'auto';
-          customAudioElements[type] = audio;
-          customAudioBuffers[type] = null;
-          if (labelElement) {
-            labelElement.textContent = `Custom: ${file.name.substring(0, 14)}`;
-            labelElement.className = 'text-[10px] text-emerald-400 font-medium truncate';
-          }
-          if (clearBtn) clearBtn.classList.remove('hidden');
-          playSound(type);
-        } catch(err) {
-          if (labelElement) {
-            labelElement.textContent = 'Upload failed';
-            labelElement.className = 'text-[10px] text-red-400 font-medium truncate';
-          }
-        }
-      }
-
-      // 1. Custom Character Upload Handlers
+      // Custom Character Upload
       const charInput = document.getElementById('charImageInput');
       const customCharThumb = document.getElementById('customCharThumb');
       const customCharPlaceholder = document.getElementById('customCharPlaceholder');
@@ -1852,7 +2238,7 @@
         });
       }
 
-      // 2. Custom Audio Controls
+      // Audio Controls
       function setupAudioControl(uploadBtnId, inputId, type, labelId, clearBtnId, defaultUrl, defaultName) {
         const uploadBtn = document.getElementById(uploadBtnId);
         const input = document.getElementById(inputId);
@@ -1903,59 +2289,74 @@
         }
       }
 
+      function loadAudioFile(file, type, labelElement, clearBtn) {
+        if (!file) return;
+        const ctx = getAudioContext();
+        
+        if (labelElement) {
+          labelElement.textContent = `Loading ${file.name.substring(0, 14)}...`;
+          labelElement.className = 'text-[10px] text-amber-400 font-medium truncate';
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const arrayBuffer = e.target.result;
+          if (ctx && ctx.decodeAudioData) {
+            ctx.decodeAudioData(arrayBuffer.slice(0), (decoded) => {
+              customAudioBuffers[type] = decoded;
+              customAudioElements[type] = null;
+              if (labelElement) {
+                labelElement.textContent = `Custom: ${file.name.substring(0, 14)}`;
+                labelElement.className = 'text-[10px] text-emerald-400 font-medium truncate';
+              }
+              if (clearBtn) clearBtn.classList.remove('hidden');
+              playSound(type);
+            }, () => {
+              setupHtmlAudioElement(file, type, labelElement, clearBtn);
+            });
+          } else {
+            setupHtmlAudioElement(file, type, labelElement, clearBtn);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
+      function setupHtmlAudioElement(file, type, labelElement, clearBtn) {
+        try {
+          const url = URL.createObjectURL(file);
+          const audio = new Audio(url);
+          audio.preload = 'auto';
+          customAudioElements[type] = audio;
+          customAudioBuffers[type] = null;
+          if (labelElement) {
+            labelElement.textContent = `Custom: ${file.name.substring(0, 14)}`;
+            labelElement.className = 'text-[10px] text-emerald-400 font-medium truncate';
+          }
+          if (clearBtn) clearBtn.classList.remove('hidden');
+          playSound(type);
+        } catch(err) {
+          if (labelElement) {
+            labelElement.textContent = 'Upload failed';
+            labelElement.className = 'text-[10px] text-red-400 font-medium truncate';
+          }
+        }
+      }
+
       setupAudioControl('uploadFlapBtn', 'flapSoundInput', 'flap', 'flapSoundLabel', 'clearFlapBtn', 'flap.mp4', 'Default: flap.mp4');
       setupAudioControl('uploadScoreBtn', 'scoreSoundInput', 'score', 'scoreSoundLabel', 'clearScoreBtn', null, 'Synthesized Chime');
       setupAudioControl('uploadHitBtn', 'hitSoundInput', 'hit', 'hitSoundLabel', 'clearHitBtn', 'crashpoint.mp4', 'Default: crashpoint.mp4');
 
       const testFlapBtn = document.getElementById('testFlapBtn');
-      if (testFlapBtn) {
-        testFlapBtn.addEventListener('click', () => {
-          isCrashPlaying = false;
-          playSound('flap');
-        });
-      }
-
+      if (testFlapBtn) testFlapBtn.addEventListener('click', () => { isCrashPlaying = false; playSound('flap'); });
       const testScoreBtn = document.getElementById('testScoreBtn');
-      if (testScoreBtn) {
-        testScoreBtn.addEventListener('click', () => playSound('score'));
-      }
-
+      if (testScoreBtn) testScoreBtn.addEventListener('click', () => playSound('score'));
       const testHitBtn = document.getElementById('testHitBtn');
-      if (testHitBtn) {
-        testHitBtn.addEventListener('click', () => {
-          stopFlapSoundImmediately();
-          playSound('hit');
-        });
-      }
+      if (testHitBtn) testHitBtn.addEventListener('click', () => { stopFlapSoundImmediately(); playSound('hit'); });
 
-      // 3. Drag & Drop Support
-      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        document.body.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }, false);
-      });
-
-      document.body.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        if (!files || files.length === 0) return;
-
-        for (const file of files) {
-          if (file.type.startsWith('image/')) {
-            setCustomCharacter(file);
-          } else if (isAudioFile(file)) {
-            loadAudioFile(file, 'flap', document.getElementById('flapSoundLabel'), document.getElementById('clearFlapBtn'));
-          }
-        }
-      });
-
-      // 4. Audio Mute / Unmute
+      // Audio Mute / Unmute
       function toggleAudio() {
         soundEnabled = !soundEnabled;
-        if (!soundEnabled) {
-          stopFlapSoundImmediately();
-        }
+        if (!soundEnabled) stopFlapSoundImmediately();
         document.querySelectorAll('.audioIconSpan').forEach(span => {
           span.textContent = soundEnabled ? '🔊' : '🔇';
         });
@@ -1963,13 +2364,12 @@
 
       const hudAudioBtn = document.getElementById('hudAudioBtn');
       if (hudAudioBtn) hudAudioBtn.addEventListener('click', toggleAudio);
-
       const toggleAudioBtnDesktop = document.getElementById('toggleAudioBtnDesktop');
       if (toggleAudioBtnDesktop) toggleAudioBtnDesktop.addEventListener('click', toggleAudio);
 
-      // 5. Theme Buttons
+      // Themes
       document.querySelectorAll('.theme-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', () => {
           document.querySelectorAll('.theme-btn').forEach(b => {
             b.classList.remove('border-emerald-500', 'bg-emerald-500/15', 'text-emerald-400');
             b.classList.add('border-slate-700', 'text-slate-300');
@@ -1981,7 +2381,7 @@
         });
       });
 
-      // 6. Physics Sliders & Preset System
+      // Presets & Sliders
       const gravitySlider = document.getElementById('gravitySlider');
       const jumpSlider = document.getElementById('jumpSlider');
       const gapSlider = document.getElementById('gapSlider');
@@ -1993,38 +2393,13 @@
       const presetDesc = document.getElementById('presetDesc');
 
       const presetData = {
-        easy: {
-          name: 'Easy Mode',
-          desc: 'Easy: Gentle gravity, slow speed & wide pipe gaps',
-          gravity: 0.20,
-          jump: 5.2,
-          gap: 135,
-          speed: 1.5,
-          spawnInterval: 120
-        },
-        classic: {
-          name: 'Classic Mode',
-          desc: 'Classic: Original authentic Flappy Bird physics',
-          gravity: 0.28,
-          jump: 5.8,
-          gap: 110,
-          speed: 2.0,
-          spawnInterval: 105
-        },
-        hard: {
-          name: 'Hard Mode',
-          desc: 'Hard: High gravity, fast speed & narrow pipe gaps',
-          gravity: 0.35,
-          jump: 6.2,
-          gap: 95,
-          speed: 2.6,
-          spawnInterval: 85
-        }
+        easy: { name: 'Easy Mode', desc: 'Easy: Gentle gravity, slow speed & wide pipe gaps', gravity: 0.20, jump: 5.2, gap: 135, speed: 1.5, spawnInterval: 120 },
+        classic: { name: 'Classic Mode', desc: 'Classic: Original authentic Flappy Bird physics', gravity: 0.28, jump: 5.8, gap: 110, speed: 2.0, spawnInterval: 105 },
+        hard: { name: 'Hard Mode', desc: 'Hard: High gravity, fast speed & narrow pipe gaps', gravity: 0.35, jump: 6.2, gap: 95, speed: 2.6, spawnInterval: 85 }
       };
 
       function updatePresetUIButtons(activeKey) {
         const btns = { easy: presetEasy, classic: presetClassic, hard: presetHard };
-        
         Object.keys(btns).forEach(key => {
           const btn = btns[key];
           if (!btn) return;
@@ -2036,16 +2411,10 @@
         });
 
         if (activeKey && presetData[activeKey]) {
-          if (currentPresetTag) {
-            currentPresetTag.textContent = presetData[activeKey].name;
-            currentPresetTag.className = 'text-[10px] font-bold text-emerald-400 uppercase tracking-wider';
-          }
+          if (currentPresetTag) currentPresetTag.textContent = presetData[activeKey].name;
           if (presetDesc) presetDesc.textContent = presetData[activeKey].desc;
         } else {
-          if (currentPresetTag) {
-            currentPresetTag.textContent = 'Custom Physics';
-            currentPresetTag.className = 'text-[10px] font-bold text-amber-400 uppercase tracking-wider';
-          }
+          if (currentPresetTag) currentPresetTag.textContent = 'Custom Physics';
           if (presetDesc) presetDesc.textContent = 'Custom: Physics adjusted manually using sliders below';
         }
       }
@@ -2115,7 +2484,7 @@
         });
       }
 
-      // 7. Reset Defaults
+      // Reset Defaults
       const resetAssetsBtn = document.getElementById('resetAssetsBtn');
       if (resetAssetsBtn) {
         resetAssetsBtn.addEventListener('click', () => {
@@ -2134,7 +2503,8 @@
         });
       }
 
-      // Start engine loop
+      // Start check session & start game engine
+      refreshUserProfile();
       requestAnimationFrame(gameLoop);
     })();
   </script>
