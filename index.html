@@ -1,0 +1,1974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flappy Bird Studio</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @keyframes bounce-gentle {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .animate-bounce-gentle {
+      animation: bounce-gentle 1.8s ease-in-out infinite;
+    }
+    .game-shadow {
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 0 1px 1px rgba(255, 255, 255, 0.1);
+    }
+    /* Fullscreen specifics */
+    :fullscreen #mainWrapper, :-webkit-full-screen #mainWrapper {
+      max-width: 100vw !important;
+      height: 100vh !important;
+      border-radius: 0 !important;
+      border: none !important;
+    }
+    :fullscreen #gameContainer, :-webkit-full-screen #gameContainer {
+      max-height: 85vh !important;
+      aspect-ratio: 9/13;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.15);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-transparent text-slate-100 antialiased p-1 sm:p-3 selection:bg-emerald-500 selection:text-white flex items-center justify-center">
+
+  <!-- Main Game Frame -->
+  <div id="mainWrapper" class="w-full max-w-md mx-auto bg-slate-900 text-slate-100 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden relative flex flex-col min-h-[480px]">
+    
+    <!-- Top Action Header -->
+    <header class="border-b border-slate-800 px-3.5 py-2.5 flex items-center justify-between gap-2 bg-slate-900/95 backdrop-blur-md z-10 flex-shrink-0">
+      <div class="flex items-center gap-2">
+        <div id="headerAvatarBox" class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center overflow-hidden shadow-sm border border-amber-300/30">
+          <img id="headerAvatarImg" src="bird.png" alt="Hero Bird" class="w-7 h-7 object-contain">
+          <span id="headerAvatarEmoji" class="text-base hidden">🐥</span>
+        </div>
+        <div>
+          <h1 class="font-bold text-xs sm:text-sm leading-tight flex items-center gap-1.5">
+            Flappy Studio
+            <span id="customActiveBadge" class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hero</span>
+          </h1>
+          <p class="text-[10px] text-slate-400">Space / Tap to fly</p>
+        </div>
+      </div>
+
+      <!-- Header Controls -->
+      <div class="flex items-center gap-1.5">
+        <button id="toggleAudioBtn" title="Toggle Sound (M)" class="p-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition">
+          <span id="audioIcon">🔊</span>
+        </button>
+
+        <button id="fullscreenBtn" title="Full Screen Mode (F)" class="p-1.5 px-2 rounded-lg border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition flex items-center gap-1">
+          <span id="fsIcon">⛶</span>
+          <span class="hidden sm:inline text-[11px]" id="fsText">Full</span>
+        </button>
+
+        <button id="openSettingsBtn" class="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
+          <span class="text-xs">⚙️</span>
+          <span>Settings</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Game Screen Area -->
+    <div id="gameWrapper" class="relative flex-1 flex flex-col items-center justify-center p-2 sm:p-3 bg-slate-950/60 select-none overflow-hidden">
+      
+      <!-- Canvas Box -->
+      <div id="gameContainer" class="relative w-full max-w-[340px] aspect-[9/13] max-h-[460px] rounded-xl overflow-hidden game-shadow border border-slate-700/80 bg-sky-300 flex items-center justify-center">
+        
+        <canvas id="gameCanvas" width="340" height="460" class="w-full h-full block cursor-pointer"></canvas>
+
+        <!-- Hit Flash Effect -->
+        <div id="flashEffect" class="absolute inset-0 bg-white pointer-events-none opacity-0 transition-opacity duration-150"></div>
+
+        <!-- Floating Action Overlay Icons -->
+        <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 pointer-events-auto z-10">
+          <button id="overlayPauseBtn" title="Pause Game (P)" class="w-7 h-7 rounded-lg bg-black/50 backdrop-blur-md text-white border border-white/20 text-xs flex items-center justify-center hover:bg-black/70 transition">
+            ⏸
+          </button>
+          <button id="overlaySettingsBtn" title="Settings (⚙️)" class="w-7 h-7 rounded-lg bg-black/50 backdrop-blur-md text-white border border-white/20 text-xs flex items-center justify-center hover:bg-black/70 transition">
+            ⚙️
+          </button>
+        </div>
+
+        <!-- Tap Prompt -->
+        <div id="quickPrompt" class="absolute bottom-2.5 inset-x-0 mx-auto w-fit px-2.5 py-0.5 bg-black/60 backdrop-blur-sm text-white text-[10px] font-medium rounded-full pointer-events-none transition-opacity duration-300">
+          Click / Tap / [Space] to Jump
+        </div>
+
+      </div>
+
+      <!-- Quick keyboard helper -->
+      <div class="mt-2 flex items-center justify-between w-full max-w-[340px] text-[10px] text-slate-400 px-1">
+        <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">Space</kbd> Flap</span>
+        <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">P</kbd> Pause</span>
+        <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">F</kbd> Full</span>
+        <span><kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[9px]">M</kbd> Sound</span>
+      </div>
+
+    </div>
+
+    <!-- Bottom Score Stats Bar -->
+    <footer class="border-t border-slate-800 px-3.5 py-2 bg-slate-900 text-xs text-slate-400 flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <span>🏆 High: <strong id="globalHighScore" class="text-emerald-400 font-mono">0</strong></span>
+        <span>🎮 Plays: <strong id="globalGamesPlayed" class="text-slate-200 font-mono">0</strong></span>
+      </div>
+      <span class="text-[10px] text-slate-400">Click ⚙️ to switch characters</span>
+    </footer>
+
+    <!-- ========================================================================= -->
+    <!-- SLICK TABBED SETTINGS OVERLAY -->
+    <!-- ========================================================================= -->
+    <div id="settingsModal" class="absolute inset-0 z-30 bg-slate-900/98 backdrop-blur-md flex flex-col justify-between hidden opacity-0 transition-opacity duration-200 overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="border-b border-slate-800 px-4 py-2.5 flex items-center justify-between bg-slate-900 flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚙️</span>
+          <div>
+            <h2 class="font-bold text-sm text-slate-100 leading-tight">Game Customizer</h2>
+            <p class="text-[10px] text-slate-400">Switch characters, bird size, sounds & physics</p>
+          </div>
+        </div>
+        <button id="closeSettingsBtn" class="w-7 h-7 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-100 hover:bg-slate-700 flex items-center justify-center text-xs transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Modal Tabs Navigation Bar -->
+      <div class="flex border-b border-slate-800 bg-slate-950/60 p-1.5 gap-1.5 flex-shrink-0">
+        <button data-tab="tab-visuals" class="tab-btn flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-center transition flex items-center justify-center gap-1">
+          <span>👥</span> Characters
+        </button>
+        <button data-tab="tab-audio" class="tab-btn flex-1 py-1.5 px-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent text-center transition flex items-center justify-center gap-1">
+          <span>🎧</span> Sounds
+        </button>
+        <button data-tab="tab-physics" class="tab-btn flex-1 py-1.5 px-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent text-center transition flex items-center justify-center gap-1">
+          <span>⚡</span> Physics
+        </button>
+      </div>
+
+      <!-- Tab Content Panels (Scrollable) -->
+      <div class="flex-1 overflow-y-auto p-3.5 space-y-3 bg-slate-900 text-slate-100">
+
+        <!-- TAB 1: CHARACTERS & VISUALS -->
+        <div id="tab-visuals" class="tab-panel space-y-3">
+          
+          <!-- Character Switching Grid -->
+          <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700">
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="font-semibold text-xs text-slate-200">Select Character</span>
+              <span id="charStatusTag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hero (Beanie)</span>
+            </div>
+
+            <!-- Character Grid Cards -->
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              
+              <!-- Option 1: Hero (Beanie) -->
+              <button data-char="hero" class="char-select-btn p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative shadow-sm">
+                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="bird.png" alt="Hero Bird" class="w-9 h-9 object-contain">
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-bold text-slate-100 truncate">Hero Bird</div>
+                  <div class="text-[10px] text-emerald-400 font-medium active-badge">✓ Active</div>
+                </div>
+              </button>
+
+              <!-- Option 2: Harish -->
+              <button data-char="harish" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative">
+                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="harish.png" alt="Harish" class="w-9 h-9 object-contain">
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-bold text-slate-200 truncate">Harish</div>
+                  <div class="text-[10px] text-slate-400 font-medium active-badge">Select</div>
+                </div>
+              </button>
+
+              <!-- Option 3: Classic 🐥 -->
+              <button data-char="classic" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative">
+                <div class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-2xl flex-shrink-0">
+                  🐥
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-bold text-slate-200 truncate">Classic Bird</div>
+                  <div class="text-[10px] text-slate-400 font-medium active-badge">Select</div>
+                </div>
+              </button>
+
+              <!-- Option 4: Custom Upload -->
+              <button data-char="custom" id="customCharCard" class="char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative">
+                <div id="customAvatarBox" class="w-11 h-11 rounded-lg bg-slate-950/80 border border-slate-700/80 flex items-center justify-center text-xl flex-shrink-0 overflow-hidden">
+                  <img id="customCharThumb" src="" alt="Custom" class="w-9 h-9 object-contain hidden">
+                  <span id="customCharPlaceholder">➕</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div id="customCharTitle" class="text-xs font-bold text-slate-200 truncate">Custom...</div>
+                  <div id="customCharSub" class="text-[10px] text-slate-400 font-medium active-badge">Upload</div>
+                </div>
+              </button>
+
+            </div>
+
+            <!-- Upload Custom Sprite Button -->
+            <div class="flex items-center justify-between pt-2 border-t border-slate-700/80">
+              <span class="text-[11px] text-slate-400">Want another character?</span>
+              <button id="uploadCharBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-750 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-semibold transition shadow-sm inline-flex items-center gap-1">
+                <span>📁 Upload New PNG/JPG</span>
+              </button>
+              <input type="file" id="charImageInput" accept="image/*" style="display:none">
+            </div>
+
+            <!-- Bird Size Slider -->
+            <div class="pt-3 mt-3 border-t border-slate-700/80">
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-300 font-medium flex items-center gap-1"><span>🔍</span> Bird Image Size:</span>
+                <span id="birdScaleVal" class="font-mono font-bold text-emerald-400">Large (1.6x)</span>
+              </div>
+              <input id="birdScaleSlider" type="range" min="0.8" max="2.6" step="0.1" value="1.6" class="w-full accent-emerald-500 cursor-pointer">
+              <div class="flex justify-between text-[9px] text-slate-500 mt-0.5">
+                <span>Small (0.8x)</span>
+                <span>Normal (1.0x)</span>
+                <span>Big (1.6x)</span>
+                <span>Giant (2.6x)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sky & Pipe Themes -->
+          <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700">
+            <label class="block text-xs font-semibold text-slate-200 mb-2">Sky Atmosphere & Theme</label>
+            <div class="grid grid-cols-4 gap-1.5">
+              <button data-theme="day" class="theme-btn active px-2 py-1.5 rounded-lg text-xs font-semibold border border-emerald-500 bg-emerald-500/15 text-emerald-400 text-center">☀️ Day</button>
+              <button data-theme="sunset" class="theme-btn px-2 py-1.5 rounded-lg text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center">🌇 Sunset</button>
+              <button data-theme="night" class="theme-btn px-2 py-1.5 rounded-lg text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center">🌙 Night</button>
+              <button data-theme="cyber" class="theme-btn px-2 py-1.5 rounded-lg text-xs font-medium border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-center">👾 Neon</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB 2: SOUND EFFECTS (flap.mp4, crashpoint.mp4 default) -->
+        <div id="tab-audio" class="tab-panel hidden space-y-2.5">
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Sound effects config (MP4 audio, M4A, MP3, WAV):</span>
+            <span class="text-[10px] text-emerald-400 font-mono bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/20">Custom Audio Active</span>
+          </div>
+
+          <!-- Flap Audio (Default: flap.mp4) -->
+          <div class="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-base">🪽</span>
+              <div class="min-w-0">
+                <div class="text-xs font-semibold text-slate-200">Flap / Jump Sound</div>
+                <div id="flapSoundLabel" class="text-[10px] text-emerald-400 font-medium truncate">Default: flap.mp4</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button id="testFlapBtn" title="Test sound" class="p-1 px-2 rounded-lg border border-slate-700 bg-slate-700/50 hover:bg-slate-700 text-xs text-slate-200">▶ Test</button>
+              <button id="uploadFlapBtn" type="button" class="p-1 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition shadow-sm">
+                📁 Change
+              </button>
+              <button id="clearFlapBtn" title="Reset to default flap.mp4" class="p-1 px-2 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-750 transition">
+                ↺ Default
+              </button>
+              <input type="file" id="flapSoundInput" accept=".mp4,.m4a,.mp3,.wav,.ogg,.aac,.flac,.webm,audio/*,video/mp4" style="display:none">
+            </div>
+          </div>
+
+          <!-- Score Audio -->
+          <div class="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-base">⭐</span>
+              <div class="min-w-0">
+                <div class="text-xs font-semibold text-slate-200">Score / Point Ding</div>
+                <div id="scoreSoundLabel" class="text-[10px] text-slate-400 truncate">Synthesized Chime</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button id="testScoreBtn" title="Test sound" class="p-1 px-2 rounded-lg border border-slate-700 bg-slate-700/50 hover:bg-slate-700 text-xs text-slate-200">▶ Test</button>
+              <button id="uploadScoreBtn" type="button" class="p-1 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition shadow-sm">
+                📁 Change
+              </button>
+              <button id="clearScoreBtn" title="Reset to synthesized chime" class="p-1 px-2 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-750 transition hidden">
+                ↺ Synth
+              </button>
+              <input type="file" id="scoreSoundInput" accept=".mp4,.m4a,.mp3,.wav,.ogg,.aac,.flac,.webm,audio/*,video/mp4" style="display:none">
+            </div>
+          </div>
+
+          <!-- Crash Audio (Default: crashpoint.mp4) -->
+          <div class="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700 flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-base">💥</span>
+              <div class="min-w-0">
+                <div class="text-xs font-semibold text-slate-200">Crash / Game Over</div>
+                <div id="hitSoundLabel" class="text-[10px] text-emerald-400 font-medium truncate">Default: crashpoint.mp4</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button id="testHitBtn" title="Test sound" class="p-1 px-2 rounded-lg border border-slate-700 bg-slate-700/50 hover:bg-slate-700 text-xs text-slate-200">▶ Test</button>
+              <button id="uploadHitBtn" type="button" class="p-1 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition shadow-sm">
+                📁 Change
+              </button>
+              <button id="clearHitBtn" title="Reset to default crashpoint.mp4" class="p-1 px-2 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-750 transition">
+                ↺ Default
+              </button>
+              <input type="file" id="hitSoundInput" accept=".mp4,.m4a,.mp3,.wav,.ogg,.aac,.flac,.webm,audio/*,video/mp4" style="display:none">
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: PHYSICS & PRESETS -->
+        <div id="tab-physics" class="tab-panel hidden space-y-3">
+          
+          <!-- Difficulty Presets Buttons -->
+          <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-200">Difficulty Preset</span>
+              <span id="currentPresetTag" class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Classic Mode</span>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2">
+              <button id="presetEasy" class="preset-btn py-2 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-0.5">
+                <span class="text-sm">🌱</span>
+                <span>Easy</span>
+              </button>
+              <button id="presetClassic" class="preset-btn py-2 px-2 rounded-xl text-xs font-bold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 text-center transition flex flex-col items-center gap-0.5 shadow-sm shadow-emerald-500/20">
+                <span class="text-sm">⭐</span>
+                <span>Classic</span>
+              </button>
+              <button id="presetHard" class="preset-btn py-2 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-0.5">
+                <span class="text-sm">🔥</span>
+                <span>Hard</span>
+              </button>
+            </div>
+            <p id="presetDesc" class="text-[10px] text-slate-400 mt-2 text-center">Classic: Original Flappy Bird speed & gaps</p>
+          </div>
+
+          <!-- Sliders -->
+          <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700 space-y-2.5">
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Gravity</span>
+                <span id="gravityVal" class="font-mono font-medium text-emerald-400">0.28</span>
+              </div>
+              <input id="gravitySlider" type="range" min="0.15" max="0.45" step="0.01" value="0.28" class="w-full accent-emerald-500 cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Flap Jump Force</span>
+                <span id="jumpVal" class="font-mono font-medium text-emerald-400">-5.8</span>
+              </div>
+              <input id="jumpSlider" type="range" min="4.0" max="8.0" step="0.1" value="5.8" class="w-full accent-emerald-500 cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Pipe Gap Height</span>
+                <span id="gapVal" class="font-mono font-medium text-emerald-400">110px</span>
+              </div>
+              <input id="gapSlider" type="range" min="80" max="160" step="5" value="110" class="w-full accent-emerald-500 cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Scroll Speed</span>
+                <span id="speedVal" class="font-mono font-medium text-emerald-400">2.0</span>
+              </div>
+              <input id="speedSlider" type="range" min="1.0" max="4.5" step="0.2" value="2.0" class="w-full accent-emerald-500 cursor-pointer">
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Modal Bottom Actions -->
+      <div class="border-t border-slate-800 px-4 py-2.5 bg-slate-900 flex items-center justify-between flex-shrink-0">
+        <button id="resetAssetsBtn" class="px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition">
+          ↺ Reset All
+        </button>
+        <button id="doneSettingsBtn" class="px-5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition shadow-sm shadow-emerald-500/30">
+          Done / Resume Game
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Audio Context, Game Engine & Fullscreen Controller -->
+  <script>
+    (() => {
+      // --- AUDIO SYSTEM (Web Audio Procedural Synthesis + Zero-Latency Decoded Buffers for flap.mp4 & crashpoint.mp4) ---
+      let audioCtx = null;
+      let soundEnabled = true;
+
+      function getAudioContext() {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+          }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        return audioCtx;
+      }
+
+      // Store decoded Web Audio buffers for instant lag-free playback
+      const customAudioBuffers = {
+        flap: null,
+        score: null,
+        hit: null
+      };
+
+      // Store HTMLAudioElement fallback
+      const customAudioElements = {
+        flap: new Audio('flap.mp4'),
+        score: null,
+        hit: new Audio('crashpoint.mp4')
+      };
+
+      // Active audio source trackers to enforce immediate stoppage and sound isolation
+      let activeFlapSources = [];
+      let activeFlapElements = [];
+      let isCrashPlaying = false;
+      let crashTimeoutId = null;
+
+      function stopFlapSoundImmediately() {
+        activeFlapSources.forEach(source => {
+          try {
+            source.stop(0);
+            source.disconnect();
+          } catch(e) {}
+        });
+        activeFlapSources = [];
+
+        activeFlapElements.forEach(audio => {
+          try {
+            audio.pause();
+            audio.currentTime = 0;
+          } catch(e) {}
+        });
+        activeFlapElements = [];
+      }
+
+      function preloadDefaultAudio(url, type) {
+        fetch(url)
+          .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.arrayBuffer();
+          })
+          .then(arrayBuffer => {
+            const ctx = getAudioContext();
+            if (ctx && ctx.decodeAudioData) {
+              ctx.decodeAudioData(arrayBuffer, (decoded) => {
+                customAudioBuffers[type] = decoded;
+              }, (e) => {
+                console.warn(`decodeAudioData fallback for ${url}:`, e);
+              });
+            }
+          })
+          .catch(e => {
+            console.warn(`Could not preload ${url}, using HTML5 Audio fallback:`, e);
+          });
+      }
+
+      preloadDefaultAudio('flap.mp4', 'flap');
+      preloadDefaultAudio('crashpoint.mp4', 'hit');
+
+      function playSound(type) {
+        if (!soundEnabled) return;
+
+        // RULE: While crashpoint is playing OR game is in Game Over state, NEVER play flap sound!
+        if (type === 'flap' && (isCrashPlaying || gameState === STATES.GAMEOVER)) {
+          return;
+        }
+
+        const ctx = getAudioContext();
+
+        // 1. High performance decoded Web Audio Buffer
+        if (customAudioBuffers[type] && ctx) {
+          try {
+            const source = ctx.createBufferSource();
+            source.buffer = customAudioBuffers[type];
+            const gain = ctx.createGain();
+            gain.gain.value = 0.95;
+            source.connect(gain);
+            gain.connect(ctx.destination);
+
+            if (type === 'flap') {
+              activeFlapSources.push(source);
+              source.onended = () => {
+                const idx = activeFlapSources.indexOf(source);
+                if (idx !== -1) activeFlapSources.splice(idx, 1);
+              };
+            } else if (type === 'hit') {
+              isCrashPlaying = true;
+              source.onended = () => {
+                isCrashPlaying = false;
+              };
+            }
+
+            source.start(0);
+            return;
+          } catch(e) {
+            console.error('Buffer playback error:', e);
+          }
+        }
+
+        // 2. HTML5 Audio Element Fallback
+        if (customAudioElements[type]) {
+          try {
+            const audio = customAudioElements[type].cloneNode();
+            audio.volume = 0.95;
+
+            if (type === 'flap') {
+              activeFlapElements.push(audio);
+              audio.onended = () => {
+                const idx = activeFlapElements.indexOf(audio);
+                if (idx !== -1) activeFlapElements.splice(idx, 1);
+              };
+            } else if (type === 'hit') {
+              isCrashPlaying = true;
+              audio.onended = () => {
+                isCrashPlaying = false;
+              };
+            }
+
+            audio.play().catch(() => {});
+            return;
+          } catch(e) {}
+        }
+
+        // 3. Procedural Web Audio Synth fallback
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        if (type === 'flap') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(750, now + 0.12);
+
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          activeFlapSources.push(osc);
+          osc.onended = () => {
+            const idx = activeFlapSources.indexOf(osc);
+            if (idx !== -1) activeFlapSources.splice(idx, 1);
+          };
+
+          osc.start(now);
+          osc.stop(now + 0.12);
+
+        } else if (type === 'score') {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.type = 'sine';
+          osc2.type = 'triangle';
+          
+          osc1.frequency.setValueAtTime(1046.5, now);
+          osc1.frequency.setValueAtTime(1318.5, now + 0.08);
+          osc2.frequency.setValueAtTime(1567.98, now + 0.12);
+
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start(now);
+          osc2.start(now + 0.08);
+          osc1.stop(now + 0.35);
+          osc2.stop(now + 0.35);
+
+        } else if (type === 'hit') {
+          isCrashPlaying = true;
+          if (crashTimeoutId) clearTimeout(crashTimeoutId);
+          crashTimeoutId = setTimeout(() => { isCrashPlaying = false; }, 350);
+
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        }
+      }
+
+      // --- GAME CANVAS & ENGINE ---
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const gameContainer = document.getElementById('gameContainer');
+
+      const config = {
+        gravity: 0.28,
+        jumpForce: -5.8,
+        pipeGap: 110,
+        pipeSpeed: 2.0,
+        pipeSpawnInterval: 105,
+        groundHeight: 65,
+        birdScale: 1.6
+      };
+
+      const themes = {
+        day: {
+          skyGradient: ['#4ec0ca', '#87e0ea', '#c6f5f8'],
+          cloudColor: 'rgba(255, 255, 255, 0.85)',
+          buildingColor: '#7dd3fc',
+          buildingAlpha: 0.4,
+          pipeBody: '#73bf2e',
+          pipeLip: '#558022',
+          pipeHighlight: '#9de64e',
+          pipeShadow: '#446618',
+          groundTop: '#ded895',
+          groundGrass: '#5ee10d',
+          groundDirt: '#dfd390'
+        },
+        sunset: {
+          skyGradient: ['#2e1a47', '#7c3aed', '#f97316', '#fde047'],
+          cloudColor: 'rgba(254, 215, 170, 0.65)',
+          buildingColor: '#4c1d95',
+          buildingAlpha: 0.5,
+          pipeBody: '#ea580c',
+          pipeLip: '#9a3412',
+          pipeHighlight: '#fb923c',
+          pipeShadow: '#7c2d12',
+          groundTop: '#78350f',
+          groundGrass: '#b45309',
+          groundDirt: '#451a03'
+        },
+        night: {
+          skyGradient: ['#030712', '#0f172a', '#1e293b'],
+          cloudColor: 'rgba(148, 163, 184, 0.25)',
+          buildingColor: '#020617',
+          buildingAlpha: 0.7,
+          pipeBody: '#15803d',
+          pipeLip: '#14532d',
+          pipeHighlight: '#22c55e',
+          pipeShadow: '#052e16',
+          groundTop: '#1e293b',
+          groundGrass: '#0f766e',
+          groundDirt: '#0f172a'
+        },
+        cyber: {
+          skyGradient: ['#0f051d', '#280c44', '#4b1248'],
+          cloudColor: 'rgba(244, 114, 182, 0.25)',
+          buildingColor: '#1e0836',
+          buildingAlpha: 0.8,
+          pipeBody: '#06b6d4',
+          pipeLip: '#0891b2',
+          pipeHighlight: '#67e8f9',
+          pipeShadow: '#164e63',
+          groundTop: '#ec4899',
+          groundGrass: '#f43f5e',
+          groundDirt: '#18042b'
+        }
+      };
+
+      let currentThemeKey = 'day';
+      let currentTheme = themes[currentThemeKey];
+
+      const STATES = { START: 0, PLAYING: 1, PAUSED: 2, GAMEOVER: 3 };
+      let gameState = STATES.START;
+      let score = 0;
+      let highScore = parseInt(localStorage.getItem('flappy_custom_highscore') || '0', 10);
+      let gamesPlayed = parseInt(localStorage.getItem('flappy_custom_games_count') || '0', 10);
+      let frames = 0;
+      let screenShake = 0;
+
+      document.getElementById('globalHighScore').textContent = highScore;
+      document.getElementById('globalGamesPlayed').textContent = gamesPlayed;
+
+      // --- CHARACTER ROSTER SYSTEM ---
+      const heroBirdImg = new Image();
+      heroBirdImg.src = 'bird.png';
+
+      const harishImg = new Image();
+      harishImg.src = 'harish.png';
+
+      let customUploadedImg = null;
+      let activeCharKey = 'hero';
+      let customCharImg = heroBirdImg;
+
+      const charInfo = {
+        hero: { name: 'Hero (Beanie)', shortName: 'Hero', img: heroBirdImg, isEmoji: false, thumb: 'bird.png' },
+        harish: { name: 'Harish', shortName: 'Harish', img: harishImg, isEmoji: false, thumb: 'harish.png' },
+        classic: { name: 'Classic Bird', shortName: 'Classic', img: null, isEmoji: true, thumb: '🐥' },
+        custom: { name: 'Custom Character', shortName: 'Custom', img: null, isEmoji: false, thumb: null }
+      };
+
+      function updateCharacterUI() {
+        const info = charInfo[activeCharKey];
+        if (!info) return;
+
+        // 1. Update Header Avatar & Badge
+        const headerAvatarImg = document.getElementById('headerAvatarImg');
+        const headerAvatarEmoji = document.getElementById('headerAvatarEmoji');
+        const customActiveBadge = document.getElementById('customActiveBadge');
+
+        if (info.isEmoji) {
+          headerAvatarImg.classList.add('hidden');
+          headerAvatarEmoji.classList.remove('hidden');
+          headerAvatarEmoji.textContent = '🐥';
+        } else if (info.img && info.img.src) {
+          headerAvatarImg.src = info.img.src;
+          headerAvatarImg.classList.remove('hidden');
+          headerAvatarEmoji.classList.add('hidden');
+        }
+
+        customActiveBadge.textContent = info.shortName;
+        document.getElementById('charStatusTag').textContent = info.name;
+
+        // 2. Update Roster Cards in Settings Modal
+        document.querySelectorAll('.char-select-btn').forEach(btn => {
+          const key = btn.getAttribute('data-char');
+          const badge = btn.querySelector('.active-badge');
+
+          if (key === activeCharKey) {
+            btn.className = 'char-select-btn p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-left transition flex items-center gap-2.5 relative shadow-sm shadow-emerald-500/20';
+            if (badge) {
+              badge.textContent = '✓ Active';
+              badge.className = 'text-[10px] text-emerald-400 font-bold active-badge';
+            }
+          } else {
+            btn.className = 'char-select-btn p-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-750 text-left transition flex items-center gap-2.5 relative';
+            if (badge) {
+              badge.textContent = key === 'custom' && !customUploadedImg ? 'Upload' : 'Select';
+              badge.className = 'text-[10px] text-slate-400 font-medium active-badge';
+            }
+          }
+        });
+      }
+
+      function selectCharacter(key) {
+        if (key === 'custom' && !customUploadedImg) {
+          document.getElementById('charImageInput').click();
+          return;
+        }
+
+        activeCharKey = key;
+        if (key === 'hero') {
+          customCharImg = heroBirdImg;
+        } else if (key === 'harish') {
+          customCharImg = harishImg;
+        } else if (key === 'classic') {
+          customCharImg = null;
+        } else if (key === 'custom' && customUploadedImg) {
+          customCharImg = customUploadedImg;
+        }
+
+        updateCharacterUI();
+        playSound('score');
+      }
+
+      document.querySelectorAll('.char-select-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-char');
+          selectCharacter(key);
+        });
+      });
+
+      let particles = [];
+      let floatTexts = [];
+
+      // --- WHITE LIQUID TRAIL GENERATOR ---
+      function emitLiquid(x, y, count, isFlap) {
+        const radius = bird.radius * config.birdScale;
+        const tailX = x - radius * 0.75;
+        const tailY = y + 2;
+
+        for (let i = 0; i < count; i++) {
+          const speed = isFlap ? (2.0 + Math.random() * 3.0) : (0.8 + Math.random() * 1.6);
+          const angle = isFlap 
+            ? (Math.PI * 0.7 + (Math.random() - 0.5) * 0.9) 
+            : (Math.PI + (Math.random() - 0.5) * 0.5);
+          const size = isFlap ? (3.5 + Math.random() * 5.0) : (2.2 + Math.random() * 3.5);
+
+          particles.push({
+            isLiquid: true,
+            x: tailX + (Math.random() * 6 - 3),
+            y: tailY + (Math.random() * 6 - 3),
+            vx: Math.cos(angle) * speed - config.pipeSpeed * 0.35,
+            vy: Math.sin(angle) * speed + (isFlap ? 1.0 : 0),
+            gravity: 0.05,
+            radius: size,
+            maxRadius: size * 1.25,
+            alpha: 0.95,
+            decay: isFlap ? (0.018 + Math.random() * 0.015) : (0.025 + Math.random() * 0.018)
+          });
+        }
+      }
+
+      const buildings = [];
+      for (let i = 0; i < 15; i++) {
+        buildings.push({
+          x: i * 30,
+          w: 22 + Math.random() * 15,
+          h: 40 + Math.random() * 80
+        });
+      }
+
+      const clouds = [
+        { x: 30, y: 50, s: 0.8, spd: 0.3 },
+        { x: 160, y: 90, s: 1.1, spd: 0.4 },
+        { x: 280, y: 40, s: 0.9, spd: 0.35 }
+      ];
+
+      let groundOffset = 0;
+
+      const bird = {
+        x: 75,
+        y: 200,
+        radius: 17,
+        velocity: 0,
+        rotation: 0,
+        wingAngle: 0,
+
+        reset() {
+          this.x = 75;
+          this.y = 200;
+          this.velocity = 0;
+          this.rotation = 0;
+          this.wingAngle = 0;
+        },
+
+        flap() {
+          if (gameState === STATES.GAMEOVER || isCrashPlaying) return;
+          this.velocity = config.jumpForce;
+          playSound('flap');
+          emitLiquid(this.x, this.y, 12, true);
+        },
+
+        update() {
+          const effectiveRadius = this.radius * (config.birdScale * 0.7);
+
+          if (gameState === STATES.START) {
+            this.y = 200 + Math.sin(frames * 0.08) * 6;
+            this.rotation = 0;
+            this.wingAngle = Math.sin(frames * 0.2) * 0.6;
+            if (frames % 4 === 0) {
+              emitLiquid(this.x, this.y, 1, false);
+            }
+          } else if (gameState === STATES.PLAYING) {
+            this.velocity += config.gravity;
+            this.y += this.velocity;
+
+            emitLiquid(this.x, this.y, 2, false);
+
+            if (this.velocity < 0) {
+              this.rotation = -0.35;
+            } else {
+              this.rotation = Math.min(Math.PI / 2, this.rotation + 0.05);
+            }
+            this.wingAngle = Math.sin(frames * 0.3) * 0.8;
+
+            if (this.y + effectiveRadius >= canvas.height - config.groundHeight) {
+              this.y = canvas.height - config.groundHeight - effectiveRadius;
+              triggerGameOver();
+            }
+            if (this.y - effectiveRadius <= 0) {
+              this.y = effectiveRadius;
+              this.velocity = 0;
+            }
+          } else if (gameState === STATES.GAMEOVER) {
+            if (this.y + effectiveRadius < canvas.height - config.groundHeight) {
+              this.velocity += config.gravity * 1.5;
+              this.y += this.velocity;
+              this.rotation = Math.PI / 2;
+            } else {
+              this.y = canvas.height - config.groundHeight - effectiveRadius;
+            }
+          }
+        },
+
+        draw() {
+          ctx.save();
+          ctx.translate(this.x, this.y);
+          ctx.rotate(this.rotation);
+          ctx.scale(config.birdScale, config.birdScale);
+
+          if (customCharImg && customCharImg.complete && customCharImg.naturalWidth !== 0) {
+            const aspect = (customCharImg.naturalWidth / customCharImg.naturalHeight) || 1;
+            const h = this.radius * 3.0;
+            const w = h * aspect;
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 8;
+            ctx.drawImage(customCharImg, -w / 2, -h / 2, w, h);
+          } else {
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetY = 2;
+
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#854d0e';
+            ctx.stroke();
+
+            ctx.fillStyle = '#fef08a';
+            ctx.beginPath();
+            ctx.arc(-2, 4, this.radius * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(6, -5, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#854d0e';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(8, -5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(9, -6, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            ctx.moveTo(7, 0);
+            ctx.lineTo(19, 3);
+            ctx.lineTo(7, 7);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#c2410c';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.save();
+            ctx.translate(-5, 2);
+            ctx.rotate(this.wingAngle);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 8, 5, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ca8a04';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          ctx.restore();
+        }
+      };
+
+      const pipes = [];
+
+      function spawnPipe() {
+        const minHeight = 55;
+        const maxAvailable = canvas.height - config.groundHeight - config.pipeGap - minHeight;
+        const topHeight = minHeight + Math.random() * (maxAvailable - minHeight);
+
+        pipes.push({
+          x: canvas.width,
+          top: topHeight,
+          bottom: topHeight + config.pipeGap,
+          width: 52,
+          scored: false
+        });
+      }
+
+      function updatePipes() {
+        if (gameState !== STATES.PLAYING) return;
+
+        if (frames % config.pipeSpawnInterval === 0) {
+          spawnPipe();
+        }
+
+        const hitRadius = bird.radius * config.birdScale * 0.65;
+
+        for (let i = pipes.length - 1; i >= 0; i--) {
+          const p = pipes[i];
+          p.x -= config.pipeSpeed;
+
+          if (!p.scored && p.x + p.width < bird.x) {
+            p.scored = true;
+            score++;
+            playSound('score');
+
+            floatTexts.push({
+              x: bird.x + 10,
+              y: bird.y - 15,
+              text: '+1',
+              alpha: 1,
+              vy: -1.2
+            });
+
+            for (let j = 0; j < 8; j++) {
+              particles.push({
+                x: bird.x,
+                y: bird.y,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                alpha: 1,
+                color: '#facc15',
+                radius: 2 + Math.random() * 2
+              });
+            }
+          }
+
+          const birdBox = {
+            l: bird.x - hitRadius,
+            r: bird.x + hitRadius,
+            t: bird.y - hitRadius,
+            b: bird.y + hitRadius
+          };
+
+          if (birdBox.r > p.x && birdBox.l < p.x + p.width) {
+            if (birdBox.t < p.top || birdBox.b > p.bottom) {
+              triggerGameOver();
+            }
+          }
+
+          if (p.x + p.width < -10) {
+            pipes.splice(i, 1);
+          }
+        }
+      }
+
+      function drawPipes() {
+        for (const p of pipes) {
+          drawPipeSegment(p.x, 0, p.width, p.top, true);
+          const bottomY = p.bottom;
+          const bottomHeight = canvas.height - config.groundHeight - bottomY;
+          drawPipeSegment(p.x, bottomY, p.width, bottomHeight, false);
+        }
+      }
+
+      function drawPipeSegment(x, y, width, height, isTop) {
+        const lipHeight = 22;
+        const lipOverhang = 4;
+
+        const bodyGradient = ctx.createLinearGradient(x, 0, x + width, 0);
+        bodyGradient.addColorStop(0, currentTheme.pipeShadow);
+        bodyGradient.addColorStop(0.2, currentTheme.pipeHighlight);
+        bodyGradient.addColorStop(0.5, currentTheme.pipeBody);
+        bodyGradient.addColorStop(1, currentTheme.pipeShadow);
+
+        ctx.fillStyle = bodyGradient;
+        ctx.fillRect(x, y, width, height);
+
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, width, height);
+
+        const lipX = x - lipOverhang;
+        const lipWidth = width + lipOverhang * 2;
+        const lipY = isTop ? y + height - lipHeight : y;
+
+        const lipGradient = ctx.createLinearGradient(lipX, 0, lipX + lipWidth, 0);
+        lipGradient.addColorStop(0, currentTheme.pipeLip);
+        lipGradient.addColorStop(0.25, currentTheme.pipeHighlight);
+        lipGradient.addColorStop(0.6, currentTheme.pipeBody);
+        lipGradient.addColorStop(1, currentTheme.pipeShadow);
+
+        ctx.fillStyle = lipGradient;
+        ctx.fillRect(lipX, lipY, lipWidth, lipHeight);
+        ctx.strokeRect(lipX, lipY, lipWidth, lipHeight);
+      }
+
+      function triggerGameOver() {
+        if (gameState === STATES.GAMEOVER) return;
+        gameState = STATES.GAMEOVER;
+
+        stopFlapSoundImmediately();
+        playSound('hit');
+        screenShake = 12;
+
+        const flashEl = document.getElementById('flashEffect');
+        flashEl.style.opacity = '0.7';
+        setTimeout(() => { flashEl.style.opacity = '0'; }, 80);
+
+        gamesPlayed++;
+        localStorage.setItem('flappy_custom_games_count', gamesPlayed);
+        document.getElementById('globalGamesPlayed').textContent = gamesPlayed;
+
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('flappy_custom_highscore', highScore);
+          document.getElementById('globalHighScore').textContent = highScore;
+        }
+
+        emitLiquid(bird.x, bird.y, 25, true);
+
+        for (let i = 0; i < 18; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1 + Math.random() * 5;
+          particles.push({
+            x: bird.x,
+            y: bird.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            alpha: 1,
+            color: ['#ef4444', '#f97316', '#eab308', '#ffffff'][Math.floor(Math.random() * 4)],
+            radius: 3 + Math.random() * 3
+          });
+        }
+      }
+
+      function resetGame() {
+        stopFlapSoundImmediately();
+        isCrashPlaying = false;
+        bird.reset();
+        pipes.length = 0;
+        particles.length = 0;
+        floatTexts.length = 0;
+        score = 0;
+        frames = 0;
+        gameState = STATES.START;
+      }
+
+      function drawBackground() {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        currentTheme.skyGradient.forEach((color, idx) => {
+          grad.addColorStop(idx / (currentTheme.skyGradient.length - 1), color);
+        });
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (currentThemeKey === 'night') {
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.arc(270, 60, 20, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (currentThemeKey === 'sunset') {
+          ctx.fillStyle = '#fb923c';
+          ctx.beginPath();
+          ctx.arc(170, 140, 32, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = currentTheme.cloudColor;
+        clouds.forEach(c => {
+          if (gameState === STATES.PLAYING) {
+            c.x -= c.spd;
+            if (c.x < -100) c.x = canvas.width + 50;
+          }
+          drawCloud(c.x, c.y, c.s);
+        });
+
+        ctx.fillStyle = currentTheme.buildingColor;
+        ctx.globalAlpha = currentTheme.buildingAlpha;
+        const groundY = canvas.height - config.groundHeight;
+        buildings.forEach(b => {
+          ctx.fillRect(b.x, groundY - b.h, b.w, b.h);
+          ctx.fillStyle = '#fef08a';
+          ctx.globalAlpha = 0.3;
+          for (let wy = groundY - b.h + 8; wy < groundY - 10; wy += 12) {
+            ctx.fillRect(b.x + 4, wy, 4, 6);
+            if (b.w > 20) ctx.fillRect(b.x + 12, wy, 4, 6);
+          }
+          ctx.fillStyle = currentTheme.buildingColor;
+          ctx.globalAlpha = currentTheme.buildingAlpha;
+        });
+        ctx.globalAlpha = 1.0;
+
+        if (gameState === STATES.PLAYING) {
+          groundOffset = (groundOffset + config.pipeSpeed) % 24;
+        }
+
+        ctx.fillStyle = currentTheme.groundDirt;
+        ctx.fillRect(0, groundY, canvas.width, config.groundHeight);
+
+        ctx.fillStyle = currentTheme.groundGrass;
+        ctx.fillRect(0, groundY, canvas.width, 12);
+
+        ctx.fillStyle = currentTheme.groundTop;
+        for (let gx = -groundOffset; gx < canvas.width + 24; gx += 20) {
+          ctx.beginPath();
+          ctx.moveTo(gx, groundY + 12);
+          ctx.lineTo(gx + 8, groundY + 12);
+          ctx.lineTo(gx + 14, groundY + config.groundHeight);
+          ctx.lineTo(gx + 6, groundY + config.groundHeight);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, groundY);
+        ctx.lineTo(canvas.width, groundY);
+        ctx.stroke();
+      }
+
+      function drawCloud(x, y, scale) {
+        ctx.beginPath();
+        ctx.arc(x, y, 14 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 12 * scale, y - 7 * scale, 16 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 28 * scale, y, 12 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 14 * scale, y + 3 * scale, 10 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // --- PARTICLES & WHITE LIQUID SIMULATION RENDERER ---
+      function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (p.isLiquid) {
+            p.vy += p.gravity;
+            p.alpha -= p.decay;
+            if (p.radius < p.maxRadius) p.radius += 0.06;
+
+            if (p.alpha <= 0 || p.y >= canvas.height - config.groundHeight) {
+              particles.splice(i, 1);
+              continue;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = p.alpha;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (p.radius > 2.8) {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+              ctx.beginPath();
+              ctx.arc(p.x - p.radius * 0.3, p.y - p.radius * 0.3, p.radius * 0.35, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            ctx.restore();
+            continue;
+          }
+
+          p.alpha -= 0.025;
+          if (p.alpha <= 0) {
+            particles.splice(i, 1);
+            continue;
+          }
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        for (let i = floatTexts.length - 1; i >= 0; i--) {
+          const t = floatTexts[i];
+          t.y += t.vy;
+          t.alpha -= 0.03;
+          if (t.alpha <= 0) {
+            floatTexts.splice(i, 1);
+            continue;
+          }
+          ctx.save();
+          ctx.globalAlpha = t.alpha;
+          ctx.fillStyle = '#fef08a';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3;
+          ctx.font = 'bold 16px sans-serif';
+          ctx.strokeText(t.text, t.x, t.y);
+          ctx.fillText(t.text, t.x, t.y);
+          ctx.restore();
+        }
+      }
+
+      function drawHUD() {
+        if (gameState === STATES.START) {
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 4;
+          ctx.font = '900 24px sans-serif';
+          ctx.textAlign = 'center';
+
+          ctx.strokeText('FLAPPY STUDIO', canvas.width / 2, 120);
+          ctx.fillText('FLAPPY STUDIO', canvas.width / 2, 120);
+
+          const pulse = 1 + Math.sin(frames * 0.1) * 0.05;
+          ctx.save();
+          ctx.translate(canvas.width / 2, 290);
+          ctx.scale(pulse, pulse);
+
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          ctx.beginPath();
+          ctx.roundRect(-70, -18, 140, 36, 10);
+          ctx.fill();
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.strokeText('TAP TO PLAY', 0, 5);
+          ctx.fillText('TAP TO PLAY', 0, 5);
+          ctx.restore();
+
+          if (highScore > 0) {
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillStyle = '#fef08a';
+            ctx.strokeText(`BEST: ${highScore}`, canvas.width / 2, 350);
+            ctx.fillText(`BEST: ${highScore}`, canvas.width / 2, 350);
+          }
+          ctx.restore();
+
+        } else if (gameState === STATES.PLAYING) {
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 5;
+          ctx.font = '900 34px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.strokeText(`${score}`, canvas.width / 2, 50);
+          ctx.fillText(`${score}`, canvas.width / 2, 50);
+          ctx.restore();
+
+        } else if (gameState === STATES.PAUSED) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 4;
+          ctx.font = '900 28px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.strokeText('PAUSED', canvas.width / 2, canvas.height / 2 - 15);
+          ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2 - 15);
+
+          ctx.font = 'bold 13px sans-serif';
+          ctx.strokeText('Tap to Resume', canvas.width / 2, canvas.height / 2 + 20);
+          ctx.fillText('Tap to Resume', canvas.width / 2, canvas.height / 2 + 20);
+          ctx.restore();
+
+        } else if (gameState === STATES.GAMEOVER) {
+          ctx.save();
+          ctx.textAlign = 'center';
+
+          ctx.fillStyle = '#ef4444';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 4;
+          ctx.font = '900 26px sans-serif';
+          ctx.strokeText('GAME OVER', canvas.width / 2, 110);
+          ctx.fillText('GAME OVER', canvas.width / 2, 110);
+
+          const cardX = 35;
+          const cardY = 140;
+          const cardW = 270;
+          const cardH = 135;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(cardX, cardY, cardW, cardH, 14);
+          ctx.fill();
+          ctx.stroke();
+
+          let medalEmoji = '🥉';
+          if (score >= 20) medalEmoji = '💎';
+          else if (score >= 10) medalEmoji = '🥇';
+          else if (score >= 5) medalEmoji = '🥈';
+
+          ctx.font = '34px sans-serif';
+          ctx.fillText(medalEmoji, cardX + 45, cardY + 68);
+
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '11px sans-serif';
+          ctx.fillText('SCORE', cardX + 110, cardY + 42);
+          ctx.fillText('BEST', cardX + 110, cardY + 88);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 22px monospace';
+          ctx.fillText(`${score}`, cardX + 110, cardY + 65);
+          ctx.fillText(`${highScore}`, cardX + 110, cardY + 110);
+
+          ctx.textAlign = 'center';
+          const pulse = 1 + Math.sin(frames * 0.1) * 0.05;
+          ctx.save();
+          ctx.translate(canvas.width / 2, 315);
+          ctx.scale(pulse, pulse);
+
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.roundRect(-70, -18, 140, 36, 10);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 13px sans-serif';
+          ctx.fillText('PLAY AGAIN', 0, 5);
+          ctx.restore();
+
+          ctx.restore();
+        }
+      }
+
+      function gameLoop() {
+        frames++;
+
+        ctx.save();
+        if (screenShake > 0) {
+          const sx = (Math.random() - 0.5) * screenShake;
+          const sy = (Math.random() - 0.5) * screenShake;
+          ctx.translate(sx, sy);
+          screenShake *= 0.85;
+          if (screenShake < 0.2) screenShake = 0;
+        }
+
+        drawBackground();
+        updatePipes();
+        drawPipes();
+        bird.update();
+        bird.draw();
+        updateParticles();
+        drawHUD();
+
+        ctx.restore();
+        requestAnimationFrame(gameLoop);
+      }
+
+      function handleAction() {
+        getAudioContext();
+        if (settingsOpen) return;
+
+        if (gameState === STATES.START) {
+          gameState = STATES.PLAYING;
+          bird.flap();
+        } else if (gameState === STATES.PLAYING) {
+          bird.flap();
+        } else if (gameState === STATES.PAUSED) {
+          gameState = STATES.PLAYING;
+        } else if (gameState === STATES.GAMEOVER) {
+          resetGame();
+        }
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        handleAction();
+      });
+
+      function togglePause() {
+        if (gameState === STATES.PLAYING) {
+          gameState = STATES.PAUSED;
+          document.getElementById('overlayPauseBtn').textContent = '▶';
+        } else if (gameState === STATES.PAUSED) {
+          gameState = STATES.PLAYING;
+          document.getElementById('overlayPauseBtn').textContent = '⏸';
+        }
+      }
+
+      document.getElementById('overlayPauseBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePause();
+      });
+
+      // --- FULLSCREEN MODE CONTROLLER ---
+      const fullscreenBtn = document.getElementById('fullscreenBtn');
+      const fsIcon = document.getElementById('fsIcon');
+      const fsText = document.getElementById('fsText');
+
+      function isFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+      }
+
+      function toggleFullscreen() {
+        const elem = document.getElementById('mainWrapper');
+        if (!isFullscreen()) {
+          if (elem.requestFullscreen) elem.requestFullscreen();
+          else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }
+      }
+
+      function updateFullscreenUI() {
+        const active = isFullscreen();
+        fsIcon.textContent = active ? '🗗' : '⛶';
+        fsText.textContent = active ? 'Exit' : 'Full';
+      }
+
+      fullscreenBtn.addEventListener('click', toggleFullscreen);
+      document.addEventListener('fullscreenchange', updateFullscreenUI);
+      document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+
+      // --- SETTINGS OVERLAY & TAB CONTROLLER ---
+      const settingsModal = document.getElementById('settingsModal');
+      const openSettingsBtn = document.getElementById('openSettingsBtn');
+      const overlaySettingsBtn = document.getElementById('overlaySettingsBtn');
+      const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+      const doneSettingsBtn = document.getElementById('doneSettingsBtn');
+      let settingsOpen = false;
+      let prevGameState = STATES.START;
+
+      function openSettings() {
+        settingsOpen = true;
+        getAudioContext();
+        if (gameState === STATES.PLAYING) {
+          prevGameState = STATES.PLAYING;
+          gameState = STATES.PAUSED;
+        } else {
+          prevGameState = gameState;
+        }
+        settingsModal.classList.remove('hidden');
+        setTimeout(() => {
+          settingsModal.classList.remove('opacity-0');
+        }, 10);
+      }
+
+      function closeSettings() {
+        settingsOpen = false;
+        settingsModal.classList.add('opacity-0');
+        setTimeout(() => {
+          settingsModal.classList.add('hidden');
+        }, 200);
+      }
+
+      openSettingsBtn.addEventListener('click', openSettings);
+      overlaySettingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSettings();
+      });
+      closeSettingsBtn.addEventListener('click', closeSettings);
+      doneSettingsBtn.addEventListener('click', closeSettings);
+
+      // Tab Switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetTab = btn.getAttribute('data-tab');
+          
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/40', 'font-semibold');
+            b.classList.add('text-slate-400', 'font-medium', 'border-transparent');
+          });
+
+          btn.classList.remove('text-slate-400', 'font-medium', 'border-transparent');
+          btn.classList.add('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/40', 'font-semibold');
+
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+          document.getElementById(targetTab).classList.remove('hidden');
+        });
+      });
+
+      // Bird Scale Slider Handler
+      const birdScaleSlider = document.getElementById('birdScaleSlider');
+      const birdScaleVal = document.getElementById('birdScaleVal');
+
+      function formatScaleLabel(val) {
+        if (val < 1.0) return `Small (${val.toFixed(1)}x)`;
+        if (val === 1.0) return `Normal (1.0x)`;
+        if (val <= 1.6) return `Large (${val.toFixed(1)}x)`;
+        if (val <= 2.0) return `Extra Large (${val.toFixed(1)}x)`;
+        return `Giant (${val.toFixed(1)}x)`;
+      }
+
+      birdScaleSlider.addEventListener('input', (e) => {
+        config.birdScale = parseFloat(e.target.value);
+        birdScaleVal.textContent = formatScaleLabel(config.birdScale);
+      });
+
+      // Keyboard support
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && settingsOpen) {
+          closeSettings();
+          return;
+        }
+        if (e.code === 'Space' || e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+          e.preventDefault();
+          handleAction();
+        } else if (e.key === 'p' || e.key === 'P') {
+          togglePause();
+        } else if (e.key === 'f' || e.key === 'F') {
+          toggleFullscreen();
+        } else if (e.key === 'm' || e.key === 'M') {
+          toggleAudio();
+        }
+      });
+
+      // --- CUSTOM ASSET UPLOAD LOGIC (IMAGE & SOUNDS) ---
+
+      function isAudioFile(file) {
+        if (!file) return false;
+        const name = file.name ? file.name.toLowerCase() : '';
+        const ext = name.split('.').pop();
+        const audioExtensions = ['mp4', 'm4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'webm', 'opus', 'caf'];
+        return (file.type && file.type.startsWith('audio/')) || file.type === 'video/mp4' || audioExtensions.includes(ext);
+      }
+
+      function loadAudioFile(file, type, labelElement, clearBtn) {
+        if (!file) return;
+        const ctx = getAudioContext();
+        
+        if (labelElement) {
+          labelElement.textContent = `Loading ${file.name.substring(0, 14)}...`;
+          labelElement.className = 'text-[10px] text-amber-400 font-medium truncate';
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const arrayBuffer = e.target.result;
+          
+          if (ctx && ctx.decodeAudioData) {
+            ctx.decodeAudioData(arrayBuffer.slice(0), (decoded) => {
+              customAudioBuffers[type] = decoded;
+              customAudioElements[type] = null;
+              if (labelElement) {
+                labelElement.textContent = `Custom: ${file.name.substring(0, 14)}`;
+                labelElement.className = 'text-[10px] text-emerald-400 font-medium truncate';
+              }
+              if (clearBtn) clearBtn.classList.remove('hidden');
+              playSound(type);
+            }, (decodeError) => {
+              console.warn('decodeAudioData fallback to Audio element:', decodeError);
+              setupHtmlAudioElement(file, type, labelElement, clearBtn);
+            });
+          } else {
+            setupHtmlAudioElement(file, type, labelElement, clearBtn);
+          }
+        };
+
+        reader.onerror = function() {
+          setupHtmlAudioElement(file, type, labelElement, clearBtn);
+        };
+
+        reader.readAsArrayBuffer(file);
+      }
+
+      function setupHtmlAudioElement(file, type, labelElement, clearBtn) {
+        try {
+          const url = URL.createObjectURL(file);
+          const audio = new Audio(url);
+          audio.preload = 'auto';
+          customAudioElements[type] = audio;
+          customAudioBuffers[type] = null;
+          if (labelElement) {
+            labelElement.textContent = `Custom: ${file.name.substring(0, 14)}`;
+            labelElement.className = 'text-[10px] text-emerald-400 font-medium truncate';
+          }
+          if (clearBtn) clearBtn.classList.remove('hidden');
+          playSound(type);
+        } catch(err) {
+          if (labelElement) {
+            labelElement.textContent = 'Upload failed';
+            labelElement.className = 'text-[10px] text-red-400 font-medium truncate';
+          }
+        }
+      }
+
+      // 1. Custom Character Upload
+      const charInput = document.getElementById('charImageInput');
+      const uploadCharBtn = document.getElementById('uploadCharBtn');
+      const customCharThumb = document.getElementById('customCharThumb');
+      const customCharPlaceholder = document.getElementById('customCharPlaceholder');
+      const customCharTitle = document.getElementById('customCharTitle');
+      const customCharSub = document.getElementById('customCharSub');
+
+      uploadCharBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        charInput.click();
+      });
+
+      function setCustomCharacter(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            customUploadedImg = img;
+            charInfo.custom.img = img;
+            charInfo.custom.name = file.name.substring(0, 14);
+            charInfo.custom.shortName = file.name.substring(0, 8);
+
+            customCharThumb.src = e.target.result;
+            customCharThumb.classList.remove('hidden');
+            customCharPlaceholder.classList.add('hidden');
+            customCharTitle.textContent = file.name.substring(0, 10);
+            customCharSub.textContent = 'Custom';
+
+            selectCharacter('custom');
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      charInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          setCustomCharacter(e.target.files[0]);
+        }
+      });
+
+      // 2. Custom Audio Controls
+      function setupAudioControl(uploadBtnId, inputId, type, labelId, clearBtnId, defaultUrl, defaultName) {
+        const uploadBtn = document.getElementById(uploadBtnId);
+        const input = document.getElementById(inputId);
+        const label = document.getElementById(labelId);
+        const clearBtn = document.getElementById(clearBtnId);
+
+        uploadBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          getAudioContext();
+          input.value = '';
+          input.click();
+        });
+
+        input.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            loadAudioFile(file, type, label, clearBtn);
+          }
+        });
+
+        if (clearBtn) {
+          clearBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            input.value = '';
+            if (defaultUrl) {
+              preloadDefaultAudio(defaultUrl, type);
+              customAudioElements[type] = new Audio(defaultUrl);
+              label.textContent = defaultName;
+              label.className = 'text-[10px] text-emerald-400 font-medium truncate';
+            } else {
+              customAudioBuffers[type] = null;
+              customAudioElements[type] = null;
+              label.textContent = defaultName;
+              label.className = 'text-[10px] text-slate-400 truncate';
+              clearBtn.classList.add('hidden');
+            }
+          });
+        }
+      }
+
+      setupAudioControl('uploadFlapBtn', 'flapSoundInput', 'flap', 'flapSoundLabel', 'clearFlapBtn', 'flap.mp4', 'Default: flap.mp4');
+      setupAudioControl('uploadScoreBtn', 'scoreSoundInput', 'score', 'scoreSoundLabel', 'clearScoreBtn', null, 'Synthesized Chime');
+      setupAudioControl('uploadHitBtn', 'hitSoundInput', 'hit', 'hitSoundLabel', 'clearHitBtn', 'crashpoint.mp4', 'Default: crashpoint.mp4');
+
+      document.getElementById('testFlapBtn').addEventListener('click', () => {
+        isCrashPlaying = false;
+        playSound('flap');
+      });
+      document.getElementById('testScoreBtn').addEventListener('click', () => playSound('score'));
+      document.getElementById('testHitBtn').addEventListener('click', () => {
+        stopFlapSoundImmediately();
+        playSound('hit');
+      });
+
+      // 3. Drag & Drop Support
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        document.body.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }, false);
+      });
+
+      document.body.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (!files || files.length === 0) return;
+
+        for (const file of files) {
+          if (file.type.startsWith('image/')) {
+            setCustomCharacter(file);
+          } else if (isAudioFile(file)) {
+            loadAudioFile(file, 'flap', document.getElementById('flapSoundLabel'), document.getElementById('clearFlapBtn'));
+          }
+        }
+      });
+
+      // 4. Audio Mute / Unmute
+      const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+      const audioIcon = document.getElementById('audioIcon');
+
+      function toggleAudio() {
+        soundEnabled = !soundEnabled;
+        if (!soundEnabled) {
+          stopFlapSoundImmediately();
+        }
+        audioIcon.textContent = soundEnabled ? '🔊' : '🔇';
+      }
+      toggleAudioBtn.addEventListener('click', toggleAudio);
+
+      // 5. Theme Buttons
+      document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.theme-btn').forEach(b => {
+            b.classList.remove('border-emerald-500', 'bg-emerald-500/15', 'text-emerald-400');
+            b.classList.add('border-slate-700', 'text-slate-300');
+          });
+          btn.classList.remove('border-slate-700', 'text-slate-300');
+          btn.classList.add('border-emerald-500', 'bg-emerald-500/15', 'text-emerald-400');
+          currentThemeKey = btn.getAttribute('data-theme');
+          currentTheme = themes[currentThemeKey];
+        });
+      });
+
+      // 6. Physics Sliders & Preset System
+      const gravitySlider = document.getElementById('gravitySlider');
+      const jumpSlider = document.getElementById('jumpSlider');
+      const gapSlider = document.getElementById('gapSlider');
+      const speedSlider = document.getElementById('speedSlider');
+      const presetEasy = document.getElementById('presetEasy');
+      const presetClassic = document.getElementById('presetClassic');
+      const presetHard = document.getElementById('presetHard');
+      const currentPresetTag = document.getElementById('currentPresetTag');
+      const presetDesc = document.getElementById('presetDesc');
+
+      const presetData = {
+        easy: {
+          name: 'Easy Mode',
+          desc: 'Easy: Gentle gravity, slow speed & wide pipe gaps',
+          gravity: 0.20,
+          jump: 5.2,
+          gap: 135,
+          speed: 1.5,
+          spawnInterval: 120
+        },
+        classic: {
+          name: 'Classic Mode',
+          desc: 'Classic: Original authentic Flappy Bird physics',
+          gravity: 0.28,
+          jump: 5.8,
+          gap: 110,
+          speed: 2.0,
+          spawnInterval: 105
+        },
+        hard: {
+          name: 'Hard Mode',
+          desc: 'Hard: High gravity, fast speed & narrow pipe gaps',
+          gravity: 0.35,
+          jump: 6.2,
+          gap: 95,
+          speed: 2.6,
+          spawnInterval: 85
+        }
+      };
+
+      function updatePresetUIButtons(activeKey) {
+        const btns = { easy: presetEasy, classic: presetClassic, hard: presetHard };
+        
+        Object.keys(btns).forEach(key => {
+          const btn = btns[key];
+          if (key === activeKey) {
+            btn.className = 'preset-btn py-2 px-2 rounded-xl text-xs font-bold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 text-center transition flex flex-col items-center gap-0.5 shadow-sm shadow-emerald-500/20';
+          } else {
+            btn.className = 'preset-btn py-2 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-0.5';
+          }
+        });
+
+        if (activeKey && presetData[activeKey]) {
+          currentPresetTag.textContent = presetData[activeKey].name;
+          currentPresetTag.className = 'text-[10px] font-bold text-emerald-400 uppercase tracking-wider';
+          presetDesc.textContent = presetData[activeKey].desc;
+        } else {
+          currentPresetTag.textContent = 'Custom Physics';
+          currentPresetTag.className = 'text-[10px] font-bold text-amber-400 uppercase tracking-wider';
+          presetDesc.textContent = 'Custom: Physics adjusted manually using sliders below';
+        }
+      }
+
+      function applyPreset(key) {
+        const p = presetData[key];
+        if (!p) return;
+
+        config.gravity = p.gravity;
+        config.jumpForce = -p.jump;
+        config.pipeGap = p.gap;
+        config.pipeSpeed = p.speed;
+        config.pipeSpawnInterval = p.spawnInterval;
+
+        gravitySlider.value = p.gravity;
+        jumpSlider.value = p.jump;
+        gapSlider.value = p.gap;
+        speedSlider.value = p.speed;
+
+        document.getElementById('gravityVal').textContent = p.gravity.toFixed(2);
+        document.getElementById('jumpVal').textContent = (-p.jump).toFixed(1);
+        document.getElementById('gapVal').textContent = `${p.gap}px`;
+        document.getElementById('speedVal').textContent = p.speed.toFixed(1);
+
+        updatePresetUIButtons(key);
+        playSound('score');
+      }
+
+      presetEasy.addEventListener('click', () => applyPreset('easy'));
+      presetClassic.addEventListener('click', () => applyPreset('classic'));
+      presetHard.addEventListener('click', () => applyPreset('hard'));
+
+      gravitySlider.addEventListener('input', (e) => {
+        config.gravity = parseFloat(e.target.value);
+        document.getElementById('gravityVal').textContent = config.gravity.toFixed(2);
+        updatePresetUIButtons(null);
+      });
+      jumpSlider.addEventListener('input', (e) => {
+        config.jumpForce = -parseFloat(e.target.value);
+        document.getElementById('jumpVal').textContent = config.jumpForce.toFixed(1);
+        updatePresetUIButtons(null);
+      });
+      gapSlider.addEventListener('input', (e) => {
+        config.pipeGap = parseInt(e.target.value, 10);
+        document.getElementById('gapVal').textContent = `${config.pipeGap}px`;
+        updatePresetUIButtons(null);
+      });
+      speedSlider.addEventListener('input', (e) => {
+        config.pipeSpeed = parseFloat(e.target.value);
+        document.getElementById('speedVal').textContent = config.pipeSpeed.toFixed(1);
+        updatePresetUIButtons(null);
+      });
+
+      // 7. Reset Defaults
+      document.getElementById('resetAssetsBtn').addEventListener('click', () => {
+        selectCharacter('hero');
+        if (document.getElementById('clearFlapBtn')) document.getElementById('clearFlapBtn').click();
+        if (document.getElementById('clearScoreBtn')) document.getElementById('clearScoreBtn').click();
+        if (document.getElementById('clearHitBtn')) document.getElementById('clearHitBtn').click();
+        applyPreset('classic');
+        config.birdScale = 1.6;
+        birdScaleSlider.value = 1.6;
+        birdScaleVal.textContent = 'Large (1.6x)';
+        resetGame();
+      });
+
+      requestAnimationFrame(gameLoop);
+    })();
+  </script>
+</body>
+</html>
