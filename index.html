@@ -594,7 +594,7 @@
           <div class="p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700">
             <div class="flex items-center justify-between mb-2.5">
               <span class="text-xs font-semibold text-slate-200">Difficulty Preset</span>
-              <span id="currentPresetTag" class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Classic Mode</span>
+              <span id="currentPresetTag" class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Normal Mode</span>
             </div>
             
             <div class="grid grid-cols-3 gap-2">
@@ -604,14 +604,14 @@
               </button>
               <button id="presetClassic" class="preset-btn py-3 px-2 rounded-xl text-xs font-bold border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 text-center transition flex flex-col items-center gap-1 shadow-sm shadow-emerald-500/20 active:scale-95">
                 <span class="text-base">⭐</span>
-                <span>Classic</span>
+                <span>Normal</span>
               </button>
               <button id="presetHard" class="preset-btn py-3 px-2 rounded-xl text-xs font-semibold border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 text-center transition flex flex-col items-center gap-1 active:scale-95">
                 <span class="text-base">🔥</span>
                 <span>Hard</span>
               </button>
             </div>
-            <p id="presetDesc" class="text-[10px] text-slate-400 mt-2.5 text-center">Classic: Original Flappy Bird speed & gaps</p>
+            <p id="presetDesc" class="text-[10px] text-slate-400 mt-2.5 text-center">Normal: Relaxed gravity, comfortable gaps & smooth gliding</p>
           </div>
 
           <!-- Sliders -->
@@ -619,33 +619,33 @@
             <div>
               <div class="flex justify-between text-[11px] mb-1">
                 <span class="text-slate-400">Gravity</span>
-                <span id="gravityVal" class="font-mono font-medium text-emerald-400">0.28</span>
+                <span id="gravityVal" class="font-mono font-medium text-emerald-400">0.21</span>
               </div>
-              <input id="gravitySlider" type="range" min="0.15" max="0.45" step="0.01" value="0.28" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
+              <input id="gravitySlider" type="range" min="0.12" max="0.45" step="0.01" value="0.21" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
             </div>
 
             <div>
               <div class="flex justify-between text-[11px] mb-1">
                 <span class="text-slate-400">Flap Jump Force</span>
-                <span id="jumpVal" class="font-mono font-medium text-emerald-400">-5.8</span>
+                <span id="jumpVal" class="font-mono font-medium text-emerald-400">-4.9</span>
               </div>
-              <input id="jumpSlider" type="range" min="4.0" max="8.0" step="0.1" value="5.8" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
+              <input id="jumpSlider" type="range" min="3.5" max="8.0" step="0.1" value="4.9" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
             </div>
 
             <div>
               <div class="flex justify-between text-[11px] mb-1">
                 <span class="text-slate-400">Pipe Gap Height</span>
-                <span id="gapVal" class="font-mono font-medium text-emerald-400">110px</span>
+                <span id="gapVal" class="font-mono font-medium text-emerald-400">135px</span>
               </div>
-              <input id="gapSlider" type="range" min="80" max="160" step="5" value="110" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
+              <input id="gapSlider" type="range" min="80" max="180" step="5" value="135" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
             </div>
 
             <div>
               <div class="flex justify-between text-[11px] mb-1">
                 <span class="text-slate-400">Scroll Speed</span>
-                <span id="speedVal" class="font-mono font-medium text-emerald-400">2.0</span>
+                <span id="speedVal" class="font-mono font-medium text-emerald-400">1.6</span>
               </div>
-              <input id="speedSlider" type="range" min="1.0" max="4.5" step="0.2" value="2.0" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
+              <input id="speedSlider" type="range" min="1.0" max="4.5" step="0.1" value="1.6" class="w-full accent-emerald-500 cursor-pointer h-2.5 bg-slate-700 rounded-lg">
             </div>
           </div>
 
@@ -882,12 +882,13 @@
       const ctx = canvas.getContext('2d');
       const gameContainer = document.getElementById('gameContainer');
 
+      // Relaxed & Balanced Physics Defaults
       const config = {
-        gravity: 0.28,
-        jumpForce: -5.8,
-        pipeGap: 110,
-        pipeSpeed: 2.0,
-        pipeSpawnInterval: 105,
+        gravity: 0.21,              // Soft & smooth falling
+        jumpForce: -4.9,            // Controlled, gentle flap
+        pipeGap: 135,               // Wide, comfortable gap (was 110)
+        pipeSpeed: 1.6,             // Relaxed scrolling speed (was 2.0)
+        pipeSpawnInterval: 120,     // Generous spacing between pipes
         groundHeight: 65,
         birdScale: 1.6
       };
@@ -1423,29 +1424,29 @@
           if (gameState === STATES.GAMEOVER || isCrashPlaying) return;
           this.velocity = config.jumpForce;
           playSound('flap');
-          emitLiquid(this.x, this.y, 12, true);
+          emitLiquid(this.x, this.y, 10, true);
         },
 
         update() {
-          const effectiveRadius = this.radius * (config.birdScale * 0.7);
+          const effectiveRadius = this.radius * (config.birdScale * 0.52);
 
           if (gameState === STATES.START) {
             this.y = 200 + Math.sin(frames * 0.08) * 6;
             this.rotation = 0;
             this.wingAngle = Math.sin(frames * 0.2) * 0.6;
-            if (frames % 4 === 0) {
+            if (frames % 5 === 0) {
               emitLiquid(this.x, this.y, 1, false);
             }
           } else if (gameState === STATES.PLAYING) {
             this.velocity += config.gravity;
             this.y += this.velocity;
 
-            emitLiquid(this.x, this.y, 2, false);
+            emitLiquid(this.x, this.y, 1, false);
 
             if (this.velocity < 0) {
-              this.rotation = -0.35;
+              this.rotation = -0.30;
             } else {
-              this.rotation = Math.min(Math.PI / 2, this.rotation + 0.05);
+              this.rotation = Math.min(Math.PI / 2, this.rotation + 0.04);
             }
             this.wingAngle = Math.sin(frames * 0.3) * 0.8;
 
@@ -1547,7 +1548,7 @@
       const pipes = [];
 
       function spawnPipe() {
-        const minHeight = 55;
+        const minHeight = 50;
         const maxAvailable = canvas.height - config.groundHeight - config.pipeGap - minHeight;
         const topHeight = minHeight + Math.random() * (maxAvailable - minHeight);
 
@@ -1555,7 +1556,7 @@
           x: canvas.width,
           top: topHeight,
           bottom: topHeight + config.pipeGap,
-          width: 52,
+          width: 50,
           scored: false
         });
       }
@@ -1567,7 +1568,8 @@
           spawnPipe();
         }
 
-        const hitRadius = bird.radius * config.birdScale * 0.65;
+        // Forgiving inner hitbox radius (prevent frustrating edge crashes)
+        const hitRadius = bird.radius * config.birdScale * 0.46;
 
         for (let i = pipes.length - 1; i >= 0; i--) {
           const p = pipes[i];
@@ -1665,7 +1667,6 @@
           const raw = localStorage.getItem('flappy_local_leaderboard');
           let list = raw ? JSON.parse(raw) : [];
           
-          // Match by user_id if logged in, or by username
           const existingIdx = list.findIndex(item => (userId && item.user_id === userId) || (!userId && item.username === username));
           
           if (existingIdx !== -1) {
@@ -1701,7 +1702,6 @@
         const charName = info.name || 'Hero';
         const avatarUrl = info.thumb || 'bird.png';
 
-        // 1. Update active user's local high score
         if (currentUser) {
           if (finalScore > (currentProfile?.high_score || 0)) {
             highScore = finalScore;
@@ -1723,14 +1723,11 @@
           }
         }
 
-        // 2. Always save to local scoreboard cache
         saveLocalScore(playerName, finalScore, charName, avatarUrl, currentUser ? currentUser.id : null);
 
-        // 3. Submit to Supabase if logged in
         if (!supabaseClient || !currentUser) return;
 
         try {
-          // A. Update profile high score
           await supabaseClient.from('profiles').upsert([
             {
               id: currentUser.id,
@@ -1740,7 +1737,6 @@
             }
           ]);
 
-          // B. Upsert into leaderboard table (Single entry per user_id)
           const { data: existingEntry } = await supabaseClient
             .from('leaderboard')
             .select('id, score')
@@ -1802,7 +1798,6 @@
         }
         updateScoreDisplays();
 
-        // Submit score
         if (score > 0) {
           submitScoreToSupabase(score);
         }
@@ -2283,7 +2278,6 @@
             localStorage.setItem(`flappy_user_highscore_${currentUser.id}`, highScore);
             updateScoreDisplays();
 
-            // Update UI
             document.getElementById('authLoggedInView').classList.remove('hidden');
             document.getElementById('authLoggedOutView').classList.add('hidden');
             document.getElementById('loggedInUsername').textContent = currentProfile.username;
@@ -2297,7 +2291,6 @@
             const hudAuthIcon = document.getElementById('hudAuthIcon');
             if (hudAuthIcon) hudAuthIcon.textContent = '🟢';
 
-            // Restore saved character preference
             const savedCharKey = localStorage.getItem(`flappy_active_char_${currentUser.id}`);
             if (savedCharKey) {
               selectCharacter(savedCharKey);
@@ -2442,7 +2435,6 @@
 
         const currentActiveUsername = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? currentUser.email.split('@')[0] : null);
 
-        // Deduplicate list by user_id or username to ensure 1 entry per player!
         const uniqueMap = new Map();
         (scores || []).forEach(entry => {
           const key = entry.user_id || entry.username;
@@ -2452,7 +2444,6 @@
           }
         });
 
-        // Ensure current user is present if they have a high score
         if (currentActiveUsername && highScore > 0) {
           const userKey = currentUser ? currentUser.id : currentActiveUsername;
           if (!uniqueMap.has(userKey) || highScore > uniqueMap.get(userKey).score) {
@@ -2851,9 +2842,9 @@
       const presetDesc = document.getElementById('presetDesc');
 
       const presetData = {
-        easy: { name: 'Easy Mode', desc: 'Easy: Gentle gravity, slow speed & wide pipe gaps', gravity: 0.20, jump: 5.2, gap: 135, speed: 1.5, spawnInterval: 120 },
-        classic: { name: 'Classic Mode', desc: 'Classic: Original authentic Flappy Bird physics', gravity: 0.28, jump: 5.8, gap: 110, speed: 2.0, spawnInterval: 105 },
-        hard: { name: 'Hard Mode', desc: 'Hard: High gravity, fast speed & narrow pipe gaps', gravity: 0.35, jump: 6.2, gap: 95, speed: 2.6, spawnInterval: 85 }
+        easy: { name: 'Easy Mode', desc: 'Easy: Gentle gravity, slow speed & super wide pipe gaps', gravity: 0.16, jump: 4.4, gap: 155, speed: 1.3, spawnInterval: 135 },
+        classic: { name: 'Normal Mode', desc: 'Normal: Relaxed gravity, comfortable gaps & smooth gliding', gravity: 0.21, jump: 4.9, gap: 135, speed: 1.6, spawnInterval: 120 },
+        hard: { name: 'Hard Mode', desc: 'Hard: Faster scrolling, tighter gaps & rapid gravity for pros', gravity: 0.28, jump: 5.8, gap: 105, speed: 2.2, spawnInterval: 95 }
       };
 
       function updatePresetUIButtons(activeKey) {
