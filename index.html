@@ -301,20 +301,10 @@
             <span class="text-xl">🏆</span>
             <div>
               <h2 class="font-bold text-sm text-slate-100">Global Leaderboard</h2>
-              <p class="text-[10px] text-slate-400">Live Global Top Scores & Rankings</p>
+              <p class="text-[10px] text-slate-400">Personal Best Scores • Updates only when beaten</p>
             </div>
           </div>
           <button id="closeLeaderboardBtn" class="w-7 h-7 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center text-xs">✕</button>
-        </div>
-
-        <!-- Leaderboard Filter Tabs -->
-        <div class="flex border-b border-slate-800 bg-slate-950/60 p-1.5 gap-1.5 flex-shrink-0">
-          <button id="lbTabAllScores" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition">
-            🌟 All Top Scores
-          </button>
-          <button id="lbTabUniqueUsers" class="flex-1 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent transition">
-            👑 Top Players
-          </button>
         </div>
 
         <!-- Leaderboard Ranks List (Scrollable) -->
@@ -327,7 +317,7 @@
           <button id="refreshLeaderboardBtn" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-semibold">
             <span>🔄 Refresh & Sync</span>
           </button>
-          <span class="text-[10px] text-slate-400">⚡ Live Global Scores</span>
+          <span class="text-[10px] text-slate-400">⚡ Only updates when beaten</span>
         </div>
 
       </div>
@@ -1676,16 +1666,34 @@
           if (!scoreVal || scoreVal <= 0) return;
           const raw = localStorage.getItem('flappy_local_leaderboard');
           let list = raw ? JSON.parse(raw) : [];
-          
-          list.push({
-            id: Date.now() + Math.floor(Math.random() * 1000),
-            user_id: userId || null,
-            username: username || 'Player',
-            score: scoreVal,
-            character_name: charName || 'Hero',
-            avatar_url: avatarUrl || 'bird.png',
-            created_at: new Date().toISOString()
-          });
+
+          const existingIdx = list.findIndex(item => 
+            (userId && item.user_id === userId) || 
+            (!userId && item.username === username)
+          );
+
+          if (existingIdx !== -1) {
+            // ONLY update if new score strictly BEATS previous score!
+            if (scoreVal > list[existingIdx].score) {
+              list[existingIdx].score = scoreVal;
+              list[existingIdx].character_name = charName;
+              list[existingIdx].avatar_url = avatarUrl;
+              list[existingIdx].username = username;
+            } else {
+              // Not beaten! Keep old high score intact!
+              return;
+            }
+          } else {
+            list.push({
+              id: Date.now(),
+              user_id: userId || null,
+              username: username || 'Player',
+              score: scoreVal,
+              character_name: charName || 'Hero',
+              avatar_url: avatarUrl || 'bird.png',
+              created_at: new Date().toISOString()
+            });
+          }
 
           list.sort((a, b) => b.score - a.score);
           const topList = list.slice(0, 50);
@@ -1703,70 +1711,102 @@
         const charName = info.name || 'Hero';
         const avatarUrl = info.thumb || 'bird.png';
 
-        // 1. Update personal best high score
-        if (currentUser) {
-          if (finalScore > (currentProfile?.high_score || 0)) {
-            highScore = finalScore;
-            if (currentProfile) currentProfile.high_score = finalScore;
-            localStorage.setItem(`flappy_user_highscore_${currentUser.id}`, highScore);
-            updateScoreDisplays();
-          }
-        } else {
-          if (finalScore > highScore) {
-            highScore = finalScore;
-            localStorage.setItem('flappy_guest_highscore', highScore);
-            updateScoreDisplays();
-          }
-        }
-
-        // Show Score Saved Toast
+        // Show Score Saved Toast for beating record
         const toast = document.getElementById('scoreSavedToast');
         if (toast) {
+          toast.textContent = `🎉 New Personal Record: ${finalScore}!`;
           toast.style.opacity = '1';
-          setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+          setTimeout(() => { toast.style.opacity = '0'; }, 2500);
         }
 
-        // 2. Always save locally immediately
+        // 1. Save locally (only updates if finalScore > existing)
         saveLocalScore(playerName, finalScore, charName, avatarUrl, currentUser ? currentUser.id : null);
 
-        // 3. Submit to Supabase for BOTH logged-in players and guests
+        // 2. Submit to Supabase
         if (!supabaseClient) return;
 
         try {
           if (currentUser) {
+            // Update profile with new personal best
             await supabaseClient.from('profiles').upsert([
               {
                 id: currentUser.id,
                 username: playerName,
                 avatar_url: avatarUrl,
-                high_score: Math.max(finalScore, currentProfile?.high_score || 0)
+                high_score: finalScore
               }
             ]);
-          }
 
-          const insertPayload = {
-            user_id: currentUser ? currentUser.id : null,
-            username: playerName,
-            score: finalScore,
-            character_name: charName,
-            avatar_url: avatarUrl
-          };
-
-          const { error: insertErr } = await supabaseClient
-            .from('leaderboard')
-            .insert([insertPayload]);
-
-          // Fallback if user earlier added unique constraint on user_id
-          if (insertErr && insertErr.code === '23505' && currentUser) {
-            await supabaseClient
+            // Query existing rows for this user in leaderboard
+            const { data: existingRows } = await supabaseClient
               .from('leaderboard')
-              .update({
-                score: finalScore,
-                character_name: charName,
-                avatar_url: avatarUrl,
-                username: playerName
-              })
-              .eq('user_id', currentUser.id);
+              .select('id, score')
+              .eq('user_id', currentUser.id)
+              .order('score', { ascending: false });
+
+            if (existingRows && existingRows.length > 0) {
+              // ONLY update if new score strictly BEATS previous recorded score!
+              if (finalScore > existingRows[0].score) {
+                await supabaseClient
+                  .from('leaderboard')
+                  .update({
+                    score: finalScore,
+                    character_name: charName,
+                    avatar_url: avatarUrl,
+                    username: playerName
+                  })
+                  .eq('id', existingRows[0].id);
+
+                // Clean up any old duplicate rows
+                if (existingRows.length > 1) {
+                  const duplicateIds = existingRows.slice(1).map(r => r.id);
+                  await supabaseClient.from('leaderboard').delete().in('id', duplicateIds);
+                }
+              }
+            } else {
+              // First time recording a score for this user
+              await supabaseClient.from('leaderboard').insert([
+                {
+                  user_id: currentUser.id,
+                  username: playerName,
+                  score: finalScore,
+                  character_name: charName,
+                  avatar_url: avatarUrl
+                }
+              ]);
+            }
+          } else {
+            // Guest mode: check if guest row exists
+            const guestName = playerName || 'Guest';
+            const { data: guestRows } = await supabaseClient
+              .from('leaderboard')
+              .select('id, score')
+              .is('user_id', null)
+              .eq('username', guestName)
+              .order('score', { ascending: false });
+
+            if (guestRows && guestRows.length > 0) {
+              if (finalScore > guestRows[0].score) {
+                await supabaseClient
+                  .from('leaderboard')
+                  .update({
+                    score: finalScore,
+                    character_name: charName,
+                    avatar_url: avatarUrl
+                  })
+                  .eq('id', guestRows[0].id);
+              }
+            } else {
+              await supabaseClient.from('leaderboard').insert([
+                {
+                  user_id: null,
+                  username: guestName,
+                  score: finalScore,
+                  character_name: charName,
+                  avatar_url: avatarUrl
+                }
+              ]);
+            }
           }
 
           // Pre-fetch updated scores in background
@@ -1793,18 +1833,18 @@
         gamesPlayed++;
         localStorage.setItem('flappy_custom_games_count', gamesPlayed);
 
+        // ONLY update score and leaderboard when current score strictly BEATS previous top score!
         if (score > highScore) {
           highScore = score;
           if (currentUser) {
             localStorage.setItem(`flappy_user_highscore_${currentUser.id}`, highScore);
+            if (currentProfile) currentProfile.high_score = highScore;
           } else {
             localStorage.setItem('flappy_guest_highscore', highScore);
           }
-        }
-        updateScoreDisplays();
+          updateScoreDisplays();
 
-        // Submit any score >= 1
-        if (score > 0) {
+          // Only submit when previous score is beaten (e.g. 32 beats 31)!
           submitScoreToSupabase(score);
         }
 
@@ -2437,42 +2477,43 @@
       const leaderboardBtnDesktop = document.getElementById('leaderboardBtnDesktop');
       const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
       const refreshLeaderboardBtn = document.getElementById('refreshLeaderboardBtn');
-      const lbTabAllScores = document.getElementById('lbTabAllScores');
-      const lbTabUniqueUsers = document.getElementById('lbTabUniqueUsers');
-
       let leaderboardModalOpen = false;
-      let currentLeaderboardMode = 'all'; // 'all' = every top score run; 'unique' = best per player
       let cachedLeaderboardScores = [];
       let isCurrentLeaderboardLocal = false;
 
-      function renderScoresList(scores, isLocalFallback, mode = currentLeaderboardMode) {
+      function renderScoresList(scores, isLocalFallback) {
         if (!leaderboardList) return;
 
         const currentActiveUsername = (currentProfile && currentProfile.username) 
           ? currentProfile.username 
           : (currentUser ? currentUser.email.split('@')[0] : null);
 
-        let listToRender = [];
+        // Keep 1 top score per player (highest beaten score)
+        const uniqueMap = new Map();
+        (scores || []).forEach(entry => {
+          const key = entry.user_id || entry.username;
+          if (!key) return;
+          if (!uniqueMap.has(key) || entry.score > uniqueMap.get(key).score) {
+            uniqueMap.set(key, entry);
+          }
+        });
 
-        if (mode === 'unique') {
-          // Collapse to single highest score per user
-          const uniqueMap = new Map();
-          (scores || []).forEach(entry => {
-            const key = entry.user_id || entry.username;
-            if (!key) return;
-            if (!uniqueMap.has(key) || entry.score > uniqueMap.get(key).score) {
-              uniqueMap.set(key, entry);
-            }
-          });
-          listToRender = Array.from(uniqueMap.values());
-        } else {
-          // Show all top scores!
-          listToRender = [...(scores || [])];
+        // Ensure current player's personal best is accurately shown
+        if (currentActiveUsername && highScore > 0) {
+          const myKey = currentUser ? currentUser.id : currentActiveUsername;
+          if (!uniqueMap.has(myKey) || highScore > uniqueMap.get(myKey).score) {
+            uniqueMap.set(myKey, {
+              id: 'my-top-score',
+              user_id: currentUser ? currentUser.id : null,
+              username: currentActiveUsername,
+              score: highScore,
+              character_name: getCurrentCharDetails().name || 'Hero',
+              avatar_url: getCurrentCharDetails().thumb || 'bird.png'
+            });
+          }
         }
 
-        // Sort descending
-        listToRender.sort((a, b) => b.score - a.score);
-        listToRender = listToRender.slice(0, 50);
+        const listToRender = Array.from(uniqueMap.values()).sort((a, b) => b.score - a.score).slice(0, 50);
 
         if (listToRender.length === 0) {
           leaderboardList.innerHTML = `
@@ -2546,21 +2587,6 @@
         leaderboardList.innerHTML = html;
       }
 
-      function setLeaderboardTab(mode) {
-        currentLeaderboardMode = mode;
-        if (mode === 'all') {
-          lbTabAllScores.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition';
-          lbTabUniqueUsers.className = 'flex-1 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent transition';
-        } else {
-          lbTabUniqueUsers.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition';
-          lbTabAllScores.className = 'flex-1 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent transition';
-        }
-        renderScoresList(cachedLeaderboardScores, isCurrentLeaderboardLocal, mode);
-      }
-
-      if (lbTabAllScores) lbTabAllScores.addEventListener('click', () => setLeaderboardTab('all'));
-      if (lbTabUniqueUsers) lbTabUniqueUsers.addEventListener('click', () => setLeaderboardTab('unique'));
-
       async function fetchAndRenderLeaderboard(showLoadingSpinner = true) {
         if (!leaderboardList) return;
         if (showLoadingSpinner && (!cachedLeaderboardScores || cachedLeaderboardScores.length === 0)) {
@@ -2578,7 +2604,7 @@
             if (!error && cloudScores && cloudScores.length > 0) {
               cachedLeaderboardScores = cloudScores;
               isCurrentLeaderboardLocal = false;
-              renderScoresList(cachedLeaderboardScores, false, currentLeaderboardMode);
+              renderScoresList(cachedLeaderboardScores, false);
               return;
             }
           } catch(err) {
@@ -2592,12 +2618,12 @@
           if (localScores.length > 0) {
             cachedLeaderboardScores = localScores;
             isCurrentLeaderboardLocal = true;
-            renderScoresList(cachedLeaderboardScores, true, currentLeaderboardMode);
+            renderScoresList(cachedLeaderboardScores, true);
             return;
           }
         } catch(e) {}
 
-        renderScoresList([], false, currentLeaderboardMode);
+        renderScoresList([], false);
       }
 
       function openLeaderboard() {
