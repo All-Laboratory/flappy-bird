@@ -129,7 +129,7 @@
 
         <!-- Floating Score Submitted Banner -->
         <div id="scoreSavedToast" class="absolute top-14 inset-x-0 mx-auto w-fit px-3 py-1 bg-emerald-500/90 backdrop-blur-md text-white text-[11px] font-bold rounded-full shadow-lg pointer-events-none opacity-0 transition-opacity duration-300 z-30 border border-emerald-300/40">
-          🏆 New High Score Saved!
+          🏆 Score Saved to Leaderboard!
         </div>
 
         <!-- ======================================================= -->
@@ -301,10 +301,20 @@
             <span class="text-xl">🏆</span>
             <div>
               <h2 class="font-bold text-sm text-slate-100">Global Leaderboard</h2>
-              <p class="text-[10px] text-slate-400">Top Distinct Players & Best Scores</p>
+              <p class="text-[10px] text-slate-400">Live Global Top Scores & Rankings</p>
             </div>
           </div>
           <button id="closeLeaderboardBtn" class="w-7 h-7 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center text-xs">✕</button>
+        </div>
+
+        <!-- Leaderboard Filter Tabs -->
+        <div class="flex border-b border-slate-800 bg-slate-950/60 p-1.5 gap-1.5 flex-shrink-0">
+          <button id="lbTabAllScores" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition">
+            🌟 All Top Scores
+          </button>
+          <button id="lbTabUniqueUsers" class="flex-1 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent transition">
+            👑 Top Players
+          </button>
         </div>
 
         <!-- Leaderboard Ranks List (Scrollable) -->
@@ -317,7 +327,7 @@
           <button id="refreshLeaderboardBtn" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-semibold">
             <span>🔄 Refresh & Sync</span>
           </button>
-          <span class="text-[10px] text-slate-400">1 entry per user (Best score only)</span>
+          <span class="text-[10px] text-slate-400">⚡ Live Global Scores</span>
         </div>
 
       </div>
@@ -337,7 +347,7 @@
             <p class="text-[10px] text-slate-400">Community shared characters, sound & physics</p>
           </div>
         </div>
-        <button id="closeSettingsBtn" class="w-9 h-9 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 active:scale-95 hover:text-slate-100 hover:bg-slate-700 flex items-center justify-center text-base transition">
+        <button id="closeSettingsBtn" class="w-9 h-9 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 active:scale-95 hover:text-slate-100 hover:bg-slate-750 flex items-center justify-center text-base transition">
           ✕
         </button>
       </div>
@@ -554,7 +564,7 @@
               </div>
             </div>
             <div class="flex items-center gap-1.5 flex-shrink-0">
-              <button id="testScoreBtn" title="Test sound" class="p-2 px-2.5 rounded-xl border border-slate-700 bg-slate-700/50 hover:bg-slate-700 active:scale-95 text-xs text-slate-200">▶ Test</button>
+              <button id="testScoreBtn" title="Test sound" class="p-2 px-2.5 rounded-xl border border-slate-700 bg-slate-700/50 hover:bg-slate-750 active:scale-95 text-xs text-slate-200">▶ Test</button>
               <button id="uploadScoreBtn" type="button" class="p-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-semibold transition shadow-sm">
                 📁 Change
               </button>
@@ -683,7 +693,7 @@
         console.warn("Supabase init error:", e);
       }
 
-      // Current Auth State & Isolated High Scores
+      // Current Auth State & High Scores
       let currentUser = null;
       let currentProfile = null;
 
@@ -884,11 +894,11 @@
 
       // Relaxed & Balanced Physics Defaults
       const config = {
-        gravity: 0.21,              // Soft & smooth falling
-        jumpForce: -4.9,            // Controlled, gentle flap
-        pipeGap: 135,               // Wide, comfortable gap (was 110)
-        pipeSpeed: 1.6,             // Relaxed scrolling speed (was 2.0)
-        pipeSpawnInterval: 120,     // Generous spacing between pipes
+        gravity: 0.21,
+        jumpForce: -4.9,
+        pipeGap: 135,
+        pipeSpeed: 1.6,
+        pipeSpawnInterval: 120,
         groundHeight: 65,
         birdScale: 1.6
       };
@@ -1568,7 +1578,6 @@
           spawnPipe();
         }
 
-        // Forgiving inner hitbox radius (prevent frustrating edge crashes)
         const hitRadius = bird.radius * config.birdScale * 0.46;
 
         for (let i = pipes.length - 1; i >= 0; i--) {
@@ -1661,35 +1670,25 @@
         ctx.strokeRect(lipX, lipY, lipWidth, lipHeight);
       }
 
-      // --- RESILIENT SINGLE-ENTRY LEADERBOARD CONTROLLER ---
+      // --- RESILIENT GLOBAL SCORE SUBMISSION & LEADERBOARD CONTROLLER ---
       function saveLocalScore(username, scoreVal, charName, avatarUrl, userId) {
         try {
+          if (!scoreVal || scoreVal <= 0) return;
           const raw = localStorage.getItem('flappy_local_leaderboard');
           let list = raw ? JSON.parse(raw) : [];
           
-          const existingIdx = list.findIndex(item => (userId && item.user_id === userId) || (!userId && item.username === username));
-          
-          if (existingIdx !== -1) {
-            if (scoreVal > list[existingIdx].score) {
-              list[existingIdx].score = scoreVal;
-              list[existingIdx].character_name = charName;
-              list[existingIdx].avatar_url = avatarUrl;
-              list[existingIdx].username = username;
-            }
-          } else if (scoreVal > 0) {
-            list.push({
-              id: Date.now(),
-              user_id: userId || null,
-              username: username || 'Player',
-              score: scoreVal,
-              character_name: charName || 'Hero',
-              avatar_url: avatarUrl || 'bird.png',
-              created_at: new Date().toISOString()
-            });
-          }
+          list.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            user_id: userId || null,
+            username: username || 'Player',
+            score: scoreVal,
+            character_name: charName || 'Hero',
+            avatar_url: avatarUrl || 'bird.png',
+            created_at: new Date().toISOString()
+          });
 
           list.sort((a, b) => b.score - a.score);
-          const topList = list.slice(0, 25);
+          const topList = list.slice(0, 50);
           localStorage.setItem('flappy_local_leaderboard', JSON.stringify(topList));
         } catch(e) {}
       }
@@ -1698,22 +1697,19 @@
         if (finalScore === undefined || finalScore === null || finalScore <= 0) return;
 
         const info = getCurrentCharDetails();
-        const playerName = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? (currentUser.user_metadata?.username || currentUser.email.split('@')[0]) : 'Guest');
+        const playerName = (currentProfile && currentProfile.username) 
+          ? currentProfile.username 
+          : (currentUser ? (currentUser.user_metadata?.username || currentUser.email.split('@')[0]) : 'Guest');
         const charName = info.name || 'Hero';
         const avatarUrl = info.thumb || 'bird.png';
 
+        // 1. Update personal best high score
         if (currentUser) {
           if (finalScore > (currentProfile?.high_score || 0)) {
             highScore = finalScore;
             if (currentProfile) currentProfile.high_score = finalScore;
             localStorage.setItem(`flappy_user_highscore_${currentUser.id}`, highScore);
             updateScoreDisplays();
-
-            const toast = document.getElementById('scoreSavedToast');
-            if (toast) {
-              toast.style.opacity = '1';
-              setTimeout(() => { toast.style.opacity = '0'; }, 2200);
-            }
           }
         } else {
           if (finalScore > highScore) {
@@ -1723,49 +1719,58 @@
           }
         }
 
+        // Show Score Saved Toast
+        const toast = document.getElementById('scoreSavedToast');
+        if (toast) {
+          toast.style.opacity = '1';
+          setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+        }
+
+        // 2. Always save locally immediately
         saveLocalScore(playerName, finalScore, charName, avatarUrl, currentUser ? currentUser.id : null);
 
-        if (!supabaseClient || !currentUser) return;
+        // 3. Submit to Supabase for BOTH logged-in players and guests
+        if (!supabaseClient) return;
 
         try {
-          await supabaseClient.from('profiles').upsert([
-            {
-              id: currentUser.id,
-              username: playerName,
-              avatar_url: avatarUrl,
-              high_score: Math.max(finalScore, currentProfile?.high_score || 0)
-            }
-          ]);
-
-          const { data: existingEntry } = await supabaseClient
-            .from('leaderboard')
-            .select('id, score')
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
-
-          if (existingEntry) {
-            if (finalScore > existingEntry.score) {
-              await supabaseClient
-                .from('leaderboard')
-                .update({
-                  username: playerName,
-                  score: finalScore,
-                  character_name: charName,
-                  avatar_url: avatarUrl
-                })
-                .eq('id', existingEntry.id);
-            }
-          } else {
-            await supabaseClient.from('leaderboard').insert([
+          if (currentUser) {
+            await supabaseClient.from('profiles').upsert([
               {
-                user_id: currentUser.id,
+                id: currentUser.id,
                 username: playerName,
-                score: finalScore,
-                character_name: charName,
-                avatar_url: avatarUrl
+                avatar_url: avatarUrl,
+                high_score: Math.max(finalScore, currentProfile?.high_score || 0)
               }
             ]);
           }
+
+          const insertPayload = {
+            user_id: currentUser ? currentUser.id : null,
+            username: playerName,
+            score: finalScore,
+            character_name: charName,
+            avatar_url: avatarUrl
+          };
+
+          const { error: insertErr } = await supabaseClient
+            .from('leaderboard')
+            .insert([insertPayload]);
+
+          // Fallback if user earlier added unique constraint on user_id
+          if (insertErr && insertErr.code === '23505' && currentUser) {
+            await supabaseClient
+              .from('leaderboard')
+              .update({
+                score: finalScore,
+                character_name: charName,
+                avatar_url: avatarUrl,
+                username: playerName
+              })
+              .eq('user_id', currentUser.id);
+          }
+
+          // Pre-fetch updated scores in background
+          fetchAndRenderLeaderboard(false);
         } catch (err) {
           console.warn("Could not save score to Supabase:", err);
         }
@@ -1798,6 +1803,7 @@
         }
         updateScoreDisplays();
 
+        // Submit any score >= 1
         if (score > 0) {
           submitScoreToSupabase(score);
         }
@@ -2371,6 +2377,7 @@
                   closeAuthModal();
                   refreshUserProfile();
                   fetchCommunityCharacters();
+                  fetchAndRenderLeaderboard(false);
                 }, 600);
               } else {
                 authMsg.innerHTML = '✉️ <strong>Account Created!</strong> Please check your email inbox to verify your account.<br><br><span class="text-amber-300">Tip: To skip email verification, turn OFF <em>"Confirm email"</em> in your Supabase Auth Providers setting.</span>';
@@ -2398,6 +2405,7 @@
                 closeAuthModal();
                 refreshUserProfile();
                 fetchCommunityCharacters();
+                fetchAndRenderLeaderboard(false);
               }, 500);
             }
           } catch (err) {
@@ -2417,48 +2425,54 @@
             await supabaseClient.auth.signOut();
             refreshUserProfile();
             closeAuthModal();
+            fetchAndRenderLeaderboard(false);
           }
         });
       }
 
-      // --- GLOBAL & LOCAL DEDUPLICATED LEADERBOARD CONTROLLER ---
+      // --- LIVE GLOBAL SCOREBOARD CONTROLLER ---
       const leaderboardModal = document.getElementById('leaderboardModal');
       const leaderboardList = document.getElementById('leaderboardList');
       const hudLeaderboardBtn = document.getElementById('hudLeaderboardBtn');
       const leaderboardBtnDesktop = document.getElementById('leaderboardBtnDesktop');
       const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
       const refreshLeaderboardBtn = document.getElementById('refreshLeaderboardBtn');
-      let leaderboardModalOpen = false;
+      const lbTabAllScores = document.getElementById('lbTabAllScores');
+      const lbTabUniqueUsers = document.getElementById('lbTabUniqueUsers');
 
-      function renderScoresList(scores, isLocalFallback) {
+      let leaderboardModalOpen = false;
+      let currentLeaderboardMode = 'all'; // 'all' = every top score run; 'unique' = best per player
+      let cachedLeaderboardScores = [];
+      let isCurrentLeaderboardLocal = false;
+
+      function renderScoresList(scores, isLocalFallback, mode = currentLeaderboardMode) {
         if (!leaderboardList) return;
 
-        const currentActiveUsername = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? currentUser.email.split('@')[0] : null);
+        const currentActiveUsername = (currentProfile && currentProfile.username) 
+          ? currentProfile.username 
+          : (currentUser ? currentUser.email.split('@')[0] : null);
 
-        const uniqueMap = new Map();
-        (scores || []).forEach(entry => {
-          const key = entry.user_id || entry.username;
-          if (!key) return;
-          if (!uniqueMap.has(key) || entry.score > uniqueMap.get(key).score) {
-            uniqueMap.set(key, entry);
-          }
-        });
+        let listToRender = [];
 
-        if (currentActiveUsername && highScore > 0) {
-          const userKey = currentUser ? currentUser.id : currentActiveUsername;
-          if (!uniqueMap.has(userKey) || highScore > uniqueMap.get(userKey).score) {
-            uniqueMap.set(userKey, {
-              id: 'my-current-score',
-              user_id: currentUser ? currentUser.id : null,
-              username: currentActiveUsername,
-              score: highScore,
-              character_name: getCurrentCharDetails().name || 'Hero',
-              avatar_url: getCurrentCharDetails().thumb || 'bird.png'
-            });
-          }
+        if (mode === 'unique') {
+          // Collapse to single highest score per user
+          const uniqueMap = new Map();
+          (scores || []).forEach(entry => {
+            const key = entry.user_id || entry.username;
+            if (!key) return;
+            if (!uniqueMap.has(key) || entry.score > uniqueMap.get(key).score) {
+              uniqueMap.set(key, entry);
+            }
+          });
+          listToRender = Array.from(uniqueMap.values());
+        } else {
+          // Show all top scores!
+          listToRender = [...(scores || [])];
         }
 
-        const listToRender = Array.from(uniqueMap.values()).sort((a, b) => b.score - a.score);
+        // Sort descending
+        listToRender.sort((a, b) => b.score - a.score);
+        listToRender = listToRender.slice(0, 50);
 
         if (listToRender.length === 0) {
           leaderboardList.innerHTML = `
@@ -2475,14 +2489,17 @@
         if (isLocalFallback) {
           html += `
             <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300 text-center mb-2">
-              📱 Showing Local Device Scores (Run Supabase SQL for global sync)
+              📱 Showing Local Scores (Connect online for global live board)
             </div>
           `;
         }
 
         listToRender.forEach((entry, index) => {
           const rank = index + 1;
-          const isCurrentUser = currentActiveUsername && (entry.username === currentActiveUsername || (currentUser && entry.user_id === currentUser.id));
+          const isCurrentUser = currentActiveUsername && (
+            (currentUser && entry.user_id && entry.user_id === currentUser.id) ||
+            (entry.username && entry.username.toLowerCase() === currentActiveUsername.toLowerCase())
+          );
 
           let rankBadge = `<span class="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 font-mono text-xs font-bold flex items-center justify-center">${rank}</span>`;
           let rankBorder = isCurrentUser ? 'border-emerald-500/60 bg-emerald-500/15 shadow-sm shadow-emerald-500/20' : 'border-slate-800 bg-slate-800/50';
@@ -2529,9 +2546,26 @@
         leaderboardList.innerHTML = html;
       }
 
-      async function fetchAndRenderLeaderboard() {
+      function setLeaderboardTab(mode) {
+        currentLeaderboardMode = mode;
+        if (mode === 'all') {
+          lbTabAllScores.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition';
+          lbTabUniqueUsers.className = 'flex-1 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent transition';
+        } else {
+          lbTabUniqueUsers.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 transition';
+          lbTabAllScores.className = 'flex-1 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent transition';
+        }
+        renderScoresList(cachedLeaderboardScores, isCurrentLeaderboardLocal, mode);
+      }
+
+      if (lbTabAllScores) lbTabAllScores.addEventListener('click', () => setLeaderboardTab('all'));
+      if (lbTabUniqueUsers) lbTabUniqueUsers.addEventListener('click', () => setLeaderboardTab('unique'));
+
+      async function fetchAndRenderLeaderboard(showLoadingSpinner = true) {
         if (!leaderboardList) return;
-        leaderboardList.innerHTML = '<div class="text-center py-8 text-xs text-slate-400 animate-pulse">Loading live scores...</div>';
+        if (showLoadingSpinner && (!cachedLeaderboardScores || cachedLeaderboardScores.length === 0)) {
+          leaderboardList.innerHTML = '<div class="text-center py-8 text-xs text-slate-400 animate-pulse">Loading live scores...</div>';
+        }
 
         if (supabaseClient) {
           try {
@@ -2539,10 +2573,12 @@
               .from('leaderboard')
               .select('*')
               .order('score', { ascending: false })
-              .limit(50);
+              .limit(100);
 
             if (!error && cloudScores && cloudScores.length > 0) {
-              renderScoresList(cloudScores, false);
+              cachedLeaderboardScores = cloudScores;
+              isCurrentLeaderboardLocal = false;
+              renderScoresList(cachedLeaderboardScores, false, currentLeaderboardMode);
               return;
             }
           } catch(err) {
@@ -2554,12 +2590,14 @@
           const raw = localStorage.getItem('flappy_local_leaderboard');
           const localScores = raw ? JSON.parse(raw) : [];
           if (localScores.length > 0) {
-            renderScoresList(localScores, true);
+            cachedLeaderboardScores = localScores;
+            isCurrentLeaderboardLocal = true;
+            renderScoresList(cachedLeaderboardScores, true, currentLeaderboardMode);
             return;
           }
         } catch(e) {}
 
-        renderScoresList([], false);
+        renderScoresList([], false, currentLeaderboardMode);
       }
 
       function openLeaderboard() {
@@ -2569,7 +2607,7 @@
           leaderboardModal.classList.remove('hidden');
           setTimeout(() => leaderboardModal.classList.remove('opacity-0'), 10);
         }
-        fetchAndRenderLeaderboard();
+        fetchAndRenderLeaderboard(true);
       }
 
       function closeLeaderboard() {
@@ -2583,7 +2621,7 @@
       if (hudLeaderboardBtn) hudLeaderboardBtn.addEventListener('click', openLeaderboard);
       if (leaderboardBtnDesktop) leaderboardBtnDesktop.addEventListener('click', openLeaderboard);
       if (closeLeaderboardBtn) closeLeaderboardBtn.addEventListener('click', closeLeaderboard);
-      if (refreshLeaderboardBtn) refreshLeaderboardBtn.addEventListener('click', fetchAndRenderLeaderboard);
+      if (refreshLeaderboardBtn) refreshLeaderboardBtn.addEventListener('click', () => fetchAndRenderLeaderboard(true));
 
       // --- FULLSCREEN & SETTINGS OVERLAY ---
       const settingsModal = document.getElementById('settingsModal');
@@ -2955,6 +2993,7 @@
       // Start check session & start game engine
       refreshUserProfile();
       fetchCommunityCharacters();
+      fetchAndRenderLeaderboard(false);
       requestAnimationFrame(gameLoop);
     })();
   </script>
