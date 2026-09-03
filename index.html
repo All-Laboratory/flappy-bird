@@ -312,12 +312,26 @@
           <div class="text-center py-8 text-xs text-slate-400 animate-pulse">Loading live scores...</div>
         </div>
 
+        <!-- Pagination Controls Bar (Shows when scores exceed 10) -->
+        <div id="leaderboardPaginationBar" class="border-t border-slate-800/80 px-3 py-2 bg-slate-950/80 flex items-center justify-between flex-shrink-0">
+          <button id="lbPrevPageBtn" class="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-1">
+            <span>◀</span> Prev
+          </button>
+          <div class="text-center">
+            <span id="lbPageIndicator" class="text-xs font-mono font-bold text-emerald-400">Page 1 of 1</span>
+            <span id="lbTotalPlayersCount" class="block text-[9px] text-slate-400">0 players</span>
+          </div>
+          <button id="lbNextPageBtn" class="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition flex items-center gap-1">
+            Next <span>▶</span>
+          </button>
+        </div>
+
         <!-- Leaderboard Footer -->
-        <div class="border-t border-slate-800 px-4 py-2.5 bg-slate-900/90 flex items-center justify-between flex-shrink-0">
+        <div class="border-t border-slate-800 px-4 py-2 bg-slate-900/90 flex items-center justify-between flex-shrink-0">
           <button id="refreshLeaderboardBtn" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-semibold">
             <span>🔄 Refresh & Sync</span>
           </button>
-          <span class="text-[10px] text-slate-400">⚡ Only updates when beaten</span>
+          <span class="text-[10px] text-slate-400">⚡ 10 per page • Profiles Sync</span>
         </div>
 
       </div>
@@ -2440,6 +2454,9 @@
       let leaderboardModalOpen = false;
       let cachedLeaderboardScores = [];
       let isCurrentLeaderboardLocal = false;
+      let leaderboardCurrentPage = 1;
+      const LEADERBOARD_PAGE_SIZE = 10;
+      let preparedLeaderboardEntries = [];
 
       function renderScoresList(scores, isLocalFallback) {
         if (!leaderboardList) return;
@@ -2473,9 +2490,29 @@
           }
         }
 
-        const listToRender = Array.from(uniqueMap.values()).sort((a, b) => b.score - a.score).slice(0, 50);
+        // Sort all player records descending
+        preparedLeaderboardEntries = Array.from(uniqueMap.values()).sort((a, b) => b.score - a.score);
 
-        if (listToRender.length === 0) {
+        renderLeaderboardPage(isLocalFallback);
+      }
+
+      function renderLeaderboardPage(isLocalFallback = isCurrentLeaderboardLocal) {
+        if (!leaderboardList) return;
+
+        const totalEntries = preparedLeaderboardEntries.length;
+        const totalPages = Math.max(1, Math.ceil(totalEntries / LEADERBOARD_PAGE_SIZE));
+
+        // Clamp page
+        if (leaderboardCurrentPage > totalPages) leaderboardCurrentPage = totalPages;
+        if (leaderboardCurrentPage < 1) leaderboardCurrentPage = 1;
+
+        const lbPaginationBar = document.getElementById('leaderboardPaginationBar');
+        const lbPageIndicator = document.getElementById('lbPageIndicator');
+        const lbTotalPlayersCount = document.getElementById('lbTotalPlayersCount');
+        const lbPrevPageBtn = document.getElementById('lbPrevPageBtn');
+        const lbNextPageBtn = document.getElementById('lbNextPageBtn');
+
+        if (totalEntries === 0) {
           leaderboardList.innerHTML = `
             <div class="text-center py-8 px-4 space-y-2">
               <span class="text-3xl">🎮</span>
@@ -2483,8 +2520,35 @@
               <div class="text-[11px] text-slate-400">Play a round to record your high score on the board!</div>
             </div>
           `;
+          if (lbPaginationBar) lbPaginationBar.classList.add('hidden');
           return;
         }
+
+        // Show pagination controls if scores exceed 10
+        if (lbPaginationBar) {
+          if (totalEntries > LEADERBOARD_PAGE_SIZE) {
+            lbPaginationBar.classList.remove('hidden');
+          } else {
+            lbPaginationBar.classList.add('hidden');
+          }
+        }
+
+        if (lbPageIndicator) {
+          lbPageIndicator.textContent = `Page ${leaderboardCurrentPage} of ${totalPages}`;
+        }
+        if (lbTotalPlayersCount) {
+          lbTotalPlayersCount.textContent = `${totalEntries} total players`;
+        }
+        if (lbPrevPageBtn) {
+          lbPrevPageBtn.disabled = (leaderboardCurrentPage <= 1);
+        }
+        if (lbNextPageBtn) {
+          lbNextPageBtn.disabled = (leaderboardCurrentPage >= totalPages);
+        }
+
+        const currentActiveUsername = (currentProfile && currentProfile.username) 
+          ? currentProfile.username 
+          : (currentUser ? currentUser.email.split('@')[0] : null);
 
         let html = '';
         if (isLocalFallback) {
@@ -2495,8 +2559,11 @@
           `;
         }
 
-        listToRender.forEach((entry, index) => {
-          const rank = index + 1;
+        const startIndex = (leaderboardCurrentPage - 1) * LEADERBOARD_PAGE_SIZE;
+        const pageItems = preparedLeaderboardEntries.slice(startIndex, startIndex + LEADERBOARD_PAGE_SIZE);
+
+        pageItems.forEach((entry, index) => {
+          const rank = startIndex + index + 1;
           const isCurrentUser = currentActiveUsername && (
             (currentUser && entry.user_id && entry.user_id === currentUser.id) ||
             (entry.username && entry.username.toLowerCase() === currentActiveUsername.toLowerCase())
@@ -2545,24 +2612,49 @@
         });
 
         leaderboardList.innerHTML = html;
+        leaderboardList.scrollTop = 0;
       }
 
-      async function fetchAndRenderLeaderboard(showLoadingSpinner = true) {
+      const lbPrevPageBtn = document.getElementById('lbPrevPageBtn');
+      const lbNextPageBtn = document.getElementById('lbNextPageBtn');
+
+      if (lbPrevPageBtn) {
+        lbPrevPageBtn.addEventListener('click', () => {
+          if (leaderboardCurrentPage > 1) {
+            leaderboardCurrentPage--;
+            renderLeaderboardPage();
+          }
+        });
+      }
+
+      if (lbNextPageBtn) {
+        lbNextPageBtn.addEventListener('click', () => {
+          const totalPages = Math.max(1, Math.ceil(preparedLeaderboardEntries.length / LEADERBOARD_PAGE_SIZE));
+          if (leaderboardCurrentPage < totalPages) {
+            leaderboardCurrentPage++;
+            renderLeaderboardPage();
+          }
+        });
+      }
+
+      async function fetchAndRenderLeaderboard(showLoadingSpinner = true, resetPage = false) {
         if (!leaderboardList) return;
+        if (resetPage) leaderboardCurrentPage = 1;
+
         if (showLoadingSpinner && (!cachedLeaderboardScores || cachedLeaderboardScores.length === 0)) {
           leaderboardList.innerHTML = '<div class="text-center py-8 text-xs text-slate-400 animate-pulse">Loading live scores...</div>';
         }
 
         if (supabaseClient) {
           try {
-            // Read high scores directly from public.profiles table!
+            // Read all high scores directly from public.profiles table!
             const { data: profileRows, error } = await supabaseClient
               .from('profiles')
               .select('id, username, avatar_url, high_score, created_at')
               .not('high_score', 'is', null)
               .gt('high_score', 0)
               .order('high_score', { ascending: false })
-              .limit(50);
+              .limit(200);
 
             if (!error && profileRows && profileRows.length > 0) {
               const mapped = profileRows.map(p => ({
@@ -2602,12 +2694,13 @@
 
       function openLeaderboard() {
         leaderboardModalOpen = true;
+        leaderboardCurrentPage = 1;
         if (gameState === STATES.PLAYING) gameState = STATES.PAUSED;
         if (leaderboardModal) {
           leaderboardModal.classList.remove('hidden');
           setTimeout(() => leaderboardModal.classList.remove('opacity-0'), 10);
         }
-        fetchAndRenderLeaderboard(true);
+        fetchAndRenderLeaderboard(true, true);
       }
 
       function closeLeaderboard() {
@@ -2621,7 +2714,7 @@
       if (hudLeaderboardBtn) hudLeaderboardBtn.addEventListener('click', openLeaderboard);
       if (leaderboardBtnDesktop) leaderboardBtnDesktop.addEventListener('click', openLeaderboard);
       if (closeLeaderboardBtn) closeLeaderboardBtn.addEventListener('click', closeLeaderboard);
-      if (refreshLeaderboardBtn) refreshLeaderboardBtn.addEventListener('click', () => fetchAndRenderLeaderboard(true));
+      if (refreshLeaderboardBtn) refreshLeaderboardBtn.addEventListener('click', () => fetchAndRenderLeaderboard(true, true));
 
       // --- FULLSCREEN & SETTINGS OVERLAY ---
       const settingsModal = document.getElementById('settingsModal');
