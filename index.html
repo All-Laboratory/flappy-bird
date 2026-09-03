@@ -1749,92 +1749,30 @@
 
         try {
           if (currentUser) {
-            // Update profile with new personal best
-            await supabaseClient.from('profiles').upsert([
+            // Update profile with new personal best directly in profiles table!
+            const { error: profErr } = await supabaseClient.from('profiles').upsert([
               {
                 id: currentUser.id,
                 username: playerName,
                 avatar_url: avatarUrl,
                 high_score: finalScore
               }
-            ]);
+            ], { onConflict: 'id' });
 
-            // Query existing rows for this user in leaderboard
-            const { data: existingRows } = await supabaseClient
-              .from('leaderboard')
-              .select('id, score')
-              .eq('user_id', currentUser.id)
-              .order('score', { ascending: false });
-
-            if (existingRows && existingRows.length > 0) {
-              // ONLY update if new score strictly BEATS previous recorded score!
-              if (finalScore > existingRows[0].score) {
-                await supabaseClient
-                  .from('leaderboard')
-                  .update({
-                    score: finalScore,
-                    character_name: charName,
-                    avatar_url: avatarUrl,
-                    username: playerName
-                  })
-                  .eq('id', existingRows[0].id);
-
-                // Clean up any old duplicate rows
-                if (existingRows.length > 1) {
-                  const duplicateIds = existingRows.slice(1).map(r => r.id);
-                  await supabaseClient.from('leaderboard').delete().in('id', duplicateIds);
-                }
-              }
-            } else {
-              // First time recording a score for this user
-              await supabaseClient.from('leaderboard').insert([
-                {
-                  user_id: currentUser.id,
-                  username: playerName,
-                  score: finalScore,
-                  character_name: charName,
-                  avatar_url: avatarUrl
-                }
-              ]);
+            if (profErr) {
+              console.warn("Profiles update error:", profErr);
             }
-          } else {
-            // Guest mode: check if guest row exists
-            const guestName = playerName || 'Guest';
-            const { data: guestRows } = await supabaseClient
-              .from('leaderboard')
-              .select('id, score')
-              .is('user_id', null)
-              .eq('username', guestName)
-              .order('score', { ascending: false });
 
-            if (guestRows && guestRows.length > 0) {
-              if (finalScore > guestRows[0].score) {
-                await supabaseClient
-                  .from('leaderboard')
-                  .update({
-                    score: finalScore,
-                    character_name: charName,
-                    avatar_url: avatarUrl
-                  })
-                  .eq('id', guestRows[0].id);
-              }
-            } else {
-              await supabaseClient.from('leaderboard').insert([
-                {
-                  user_id: null,
-                  username: guestName,
-                  score: finalScore,
-                  character_name: charName,
-                  avatar_url: avatarUrl
-                }
-              ]);
+            if (currentProfile) {
+              currentProfile.high_score = finalScore;
+              currentProfile.username = playerName;
             }
           }
 
-          // Pre-fetch updated scores in background
+          // Pre-fetch updated scores directly from profiles table
           fetchAndRenderLeaderboard(false);
         } catch (err) {
-          console.warn("Could not save score to Supabase:", err);
+          console.warn("Could not save score to Supabase profiles:", err);
         }
       }
 
@@ -2617,20 +2555,34 @@
 
         if (supabaseClient) {
           try {
-            const { data: cloudScores, error } = await supabaseClient
-              .from('leaderboard')
-              .select('*')
-              .order('score', { ascending: false })
-              .limit(100);
+            // Read high scores directly from public.profiles table!
+            const { data: profileRows, error } = await supabaseClient
+              .from('profiles')
+              .select('id, username, avatar_url, high_score, created_at')
+              .not('high_score', 'is', null)
+              .gt('high_score', 0)
+              .order('high_score', { ascending: false })
+              .limit(50);
 
-            if (!error && cloudScores && cloudScores.length > 0) {
-              cachedLeaderboardScores = cloudScores;
+            if (!error && profileRows && profileRows.length > 0) {
+              const mapped = profileRows.map(p => ({
+                id: p.id,
+                user_id: p.id,
+                username: p.username || 'Player',
+                score: p.high_score || 0,
+                character_name: 'Hero',
+                avatar_url: p.avatar_url || 'bird.png',
+                created_at: p.created_at
+              }));
+              cachedLeaderboardScores = mapped;
               isCurrentLeaderboardLocal = false;
               renderScoresList(cachedLeaderboardScores, false);
               return;
+            } else if (error) {
+              console.warn("Profiles leaderboard query notice:", error);
             }
           } catch(err) {
-            console.warn("Cloud leaderboard fetch:", err);
+            console.warn("Cloud profiles leaderboard fetch:", err);
           }
         }
 
