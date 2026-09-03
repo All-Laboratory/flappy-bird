@@ -1199,13 +1199,15 @@
               .from('custom_characters')
               .select('*')
               .order('created_at', { ascending: false })
-              .limit(40);
+              .limit(50);
 
             if (!error && data && data.length > 0) {
               remoteSkins = data;
+            } else if (error) {
+              console.warn("Supabase custom_characters fetch note:", error.message || error);
             }
           } catch (err) {
-            console.warn("Supabase custom_characters fetch:", err);
+            console.warn("Supabase custom_characters fetch error:", err);
           }
         }
 
@@ -1216,19 +1218,20 @@
         } catch(e) {}
 
         const mergedMap = new Map();
+        // Cloud skins take priority so all users see the same global library
         [...remoteSkins, ...localSkins].forEach(item => {
           const id = item.id ? String(item.id) : (item.name + '_' + item.created_at);
-          if (!mergedMap.has(id)) {
+          if (!mergedMap.has(id) && item.image_url) {
             const img = new Image();
             img.src = item.image_url;
             mergedMap.set(id, {
               id: id,
               name: item.character_name || item.name || 'Custom Skin',
               creator_id: item.creator_id || null,
-              creator_name: item.creator_name || 'Community',
+              creator_name: item.creator_name || 'Community Player',
               imgUrl: item.image_url,
               imgObj: img,
-              created_at: item.created_at
+              created_at: item.created_at || new Date().toISOString()
             });
           }
         });
@@ -1248,8 +1251,12 @@
 
         renderCommunityCharactersList();
 
-        const activeCommunity = communitySkins.find(s => s.id === activeCharKey);
-        if (activeCommunity) {
+        // Restore active character if it was a community skin
+        const savedKey = currentUser ? `flappy_active_char_${currentUser.id}` : 'flappy_active_char_guest';
+        const preferredKey = localStorage.getItem(savedKey) || activeCharKey;
+        const activeCommunity = communitySkins.find(s => s.id === preferredKey);
+        if (activeCommunity && activeCommunity.imgObj) {
+          activeCharKey = preferredKey;
           customCharImg = activeCommunity.imgObj;
           updateCharacterUI();
         }
@@ -1264,7 +1271,7 @@
         reader.onload = (e) => {
           const img = new Image();
           img.onload = () => {
-            const maxDim = 128;
+            const maxDim = 112;
             let w = img.width;
             let h = img.height;
             if (w > h && w > maxDim) {
@@ -1294,7 +1301,7 @@
         const creatorName = (currentProfile && currentProfile.username) ? currentProfile.username : (currentUser ? currentUser.email.split('@')[0] : 'Community Player');
 
         if (uploadCharStatusMsg) {
-          uploadCharStatusMsg.textContent = 'Optimizing & publishing skin...';
+          uploadCharStatusMsg.textContent = 'Optimizing & uploading skin to community...';
           uploadCharStatusMsg.className = 'text-[10px] text-amber-400 font-medium';
           uploadCharStatusMsg.classList.remove('hidden');
         }
@@ -1310,16 +1317,26 @@
             created_at: new Date().toISOString()
           };
 
+          let cloudSuccess = false;
           if (supabaseClient) {
             try {
-              await supabaseClient.from('custom_characters').insert([
+              const { data, error } = await supabaseClient.from('custom_characters').insert([
                 {
                   creator_id: currentUser ? currentUser.id : null,
                   creator_name: creatorName,
                   character_name: charName,
                   image_url: optimizedDataUrl
                 }
-              ]);
+              ]).select();
+
+              if (!error) {
+                cloudSuccess = true;
+                if (data && data[0] && data[0].id) {
+                  newSkinObj.id = String(data[0].id);
+                }
+              } else {
+                console.warn("Supabase custom_characters insert notice:", error);
+              }
             } catch(err) {
               console.warn("Could not insert to custom_characters table:", err);
             }
@@ -1333,13 +1350,18 @@
           } catch(e) {}
 
           if (uploadCharStatusMsg) {
-            uploadCharStatusMsg.textContent = `🎉 "${charName}" published to Community Roster!`;
-            uploadCharStatusMsg.className = 'text-[10px] text-emerald-400 font-bold';
+            if (cloudSuccess) {
+              uploadCharStatusMsg.textContent = `🎉 "${charName}" published to Community Roster for all players!`;
+              uploadCharStatusMsg.className = 'text-[10px] text-emerald-400 font-bold';
+            } else {
+              uploadCharStatusMsg.innerHTML = `🎉 "${charName}" saved! <span class="text-amber-300 underline">(Run Supabase SQL to sync globally across all devices)</span>`;
+              uploadCharStatusMsg.className = 'text-[10px] text-emerald-400 font-medium';
+            }
           }
           newCharNameInput.value = '';
 
           await fetchCommunityCharacters();
-          selectCharacter(skinId);
+          selectCharacter(newSkinObj.id);
         });
       }
 
@@ -2684,6 +2706,19 @@
       if (openSettingsBtnDesktop) openSettingsBtnDesktop.addEventListener('click', openSettings);
       if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettings);
       if (doneSettingsBtn) doneSettingsBtn.addEventListener('click', closeSettings);
+
+      const headerAvatarBox = document.getElementById('headerAvatarBox');
+      const customActiveBadge = document.getElementById('customActiveBadge');
+      if (headerAvatarBox) {
+        headerAvatarBox.classList.add('cursor-pointer');
+        headerAvatarBox.title = "Change Skin / Roster (C)";
+        headerAvatarBox.addEventListener('click', openSettings);
+      }
+      if (customActiveBadge) {
+        customActiveBadge.classList.add('cursor-pointer');
+        customActiveBadge.title = "Change Skin / Roster (C)";
+        customActiveBadge.addEventListener('click', openSettings);
+      }
 
       // Tab Switching
       document.querySelectorAll('.tab-btn').forEach(btn => {
